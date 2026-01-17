@@ -180,6 +180,7 @@ model PlayerPerformance {
   rushYds Int @default(0)
   recYds  Int @default(0)
   tds     Int @default(0)
+  fumbles Int @default(0)
 
   player Player @relation(fields: [playerId], references: [id])
   week   Week   @relation(fields: [weekId], references: [id])

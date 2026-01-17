@@ -12,6 +12,7 @@ const RARITY_WEIGHTS = [
 ];
 
 function selectRarity(): string {
+
     const r = Math.random();
     if (r < 0.7) return "common";
     if (r < 0.9) return "rare";
@@ -164,140 +165,226 @@ export async function consumePowerup(formData: FormData) {
 /**
  * Simulate a week by generating individual player performances and summing them up
  */
+// Helper to generate random player stats based on position
+const generateStats = (pos: string) => {
+    let points = 0;
+    let stats = { passYds: 0, rushYds: 0, recYds: 0, tds: 0, fumbles: 0 };
+
+    switch (pos) {
+        case "QB":
+            stats.passYds = Math.floor(Math.random() * 250 + 150);
+            stats.rushYds = Math.floor(Math.random() * 40);
+            stats.tds = Math.floor(Math.random() * 3);
+            points = (stats.passYds * 0.04) + (stats.rushYds * 0.1) + (stats.tds * 4);
+            break;
+        case "RB":
+            stats.rushYds = Math.floor(Math.random() * 100 + 40);
+            stats.recYds = Math.floor(Math.random() * 30);
+            stats.tds = Math.floor(Math.random() * 2);
+            points = (stats.rushYds * 0.1) + (stats.recYds * 0.1) + (stats.tds * 6);
+            break;
+        case "WR":
+            stats.recYds = Math.floor(Math.random() * 110 + 30);
+            stats.tds = Math.floor(Math.random() * 2);
+            points = (stats.recYds * 0.1) + (stats.tds * 6);
+            break;
+        case "TE":
+            stats.recYds = Math.floor(Math.random() * 70 + 10);
+            stats.tds = Math.random() > 0.7 ? 1 : 0;
+            points = (stats.recYds * 0.1) + (stats.tds * 6);
+            break;
+        default:
+            points = Math.random() * 15 + 5;
+    }
+
+    // Random fumble chance (5% per player)
+    if (Math.random() < 0.05) {
+        stats.fumbles = 1;
+        points -= 2; // Standard fumble penalty
+    }
+
+    return { points: parseFloat(points.toFixed(2)), stats };
+};
+
+/**
+ * Simulate a week by generating individual player performances and summing them up
+ */
 export async function simulateWeek(leagueId: string, weekNumber: number) {
-    const week = await db.week.findUnique({
-        where: { leagueId_number: { leagueId, number: weekNumber } },
-        include: {
-            matchups: {
-                include: {
-                    homeTeam: {
-                        include: {
-                            rosterSlots: {
-                                where: { slotType: { not: "BENCH" } },
-                                include: { player: true },
+    try {
+        console.log(`Starting simulation for league ${leagueId} week ${weekNumber}`);
+
+        // 1. Get Week ID first to filter powerups
+        const weekRef = await db.week.findUnique({
+            where: { leagueId_number: { leagueId, number: weekNumber } },
+        });
+
+        if (!weekRef) {
+            console.error("Week not found (weekRef is null)");
+            throw new Error("Week not found");
+        }
+        console.log(`Found weekRef: ${weekRef.id}`);
+
+        // 2. Fetch full data
+        const week = await db.week.findUnique({
+            where: { id: weekRef.id },
+            include: {
+                matchups: {
+                    include: {
+                        homeTeam: {
+                            include: {
+                                rosterSlots: {
+                                    include: { player: true },
+                                },
+                                powerups: {
+                                    where: { weekId: weekRef.id, isConsumed: false },
+                                    include: { powerup: true }
+                                }
                             },
                         },
-                    },
-                    awayTeam: {
-                        include: {
-                            rosterSlots: {
-                                where: { slotType: { not: "BENCH" } },
-                                include: { player: true },
+                        awayTeam: {
+                            include: {
+                                rosterSlots: {
+                                    include: { player: true },
+                                },
+                                powerups: {
+                                    where: { weekId: weekRef.id, isConsumed: false },
+                                    include: { powerup: true }
+                                }
                             },
                         },
                     },
                 },
             },
-        },
-    });
+        });
 
-    if (!week) {
-        throw new Error("Week not found");
-    }
-
-    // Function to generate random player stats based on position
-    const generateStats = (pos: string) => {
-        let points = 0;
-        let stats = { passYds: 0, rushYds: 0, recYds: 0, tds: 0 };
-
-        switch (pos) {
-            case "QB":
-                stats.passYds = Math.floor(Math.random() * 250 + 150);
-                stats.rushYds = Math.floor(Math.random() * 40);
-                stats.tds = Math.floor(Math.random() * 3);
-                points = (stats.passYds * 0.04) + (stats.rushYds * 0.1) + (stats.tds * 4);
-                break;
-            case "RB":
-                stats.rushYds = Math.floor(Math.random() * 100 + 40);
-                stats.recYds = Math.floor(Math.random() * 30);
-                stats.tds = Math.floor(Math.random() * 2);
-                points = (stats.rushYds * 0.1) + (stats.recYds * 0.1) + (stats.tds * 6);
-                break;
-            case "WR":
-                stats.recYds = Math.floor(Math.random() * 110 + 30);
-                stats.tds = Math.floor(Math.random() * 2);
-                points = (stats.recYds * 0.1) + (stats.tds * 6);
-                break;
-            case "TE":
-                stats.recYds = Math.floor(Math.random() * 70 + 10);
-                stats.tds = Math.random() > 0.7 ? 1 : 0;
-                points = (stats.recYds * 0.1) + (stats.tds * 6);
-                break;
-            default:
-                points = Math.random() * 15 + 5;
+        if (!week) {
+            console.error("Week data load failed (week is null)");
+            throw new Error("Week data load failed");
         }
-        return { points: parseFloat(points.toFixed(2)), stats };
-    };
+        console.log(`Fetched week with ${week.matchups.length} matchups`);
 
-    const transactions = [];
+        const transactions = [];
 
-    for (const matchup of week.matchups) {
-        let homeTotal = 0;
-        let awayTotal = 0;
+        for (const matchup of week.matchups) {
+            console.log(`Processing matchup ${matchup.id}`);
+            let homeTotal = 0;
+            let awayTotal = 0;
 
-        // Home Team Starters
-        for (const slot of matchup.homeTeam.rosterSlots) {
-            if (slot.player) {
-                const { points, stats } = generateStats(slot.player.position);
-                homeTotal += points;
-                transactions.push(
-                    db.playerPerformance.upsert({
-                        where: {
-                            playerId_weekId: { playerId: slot.player.id, weekId: week.id },
-                        },
-                        create: {
-                            playerId: slot.player.id,
-                            weekId: week.id,
-                            points,
-                            ...stats,
-                        },
-                        update: { points, ...stats },
-                    })
-                );
+            // Track stats for penalty calculation (e.g. fumbles)
+            let homeFumbles = 0;
+            let awayFumbles = 0;
+
+            // --- HOME TEAM STATS ---
+            for (const slot of matchup.homeTeam.rosterSlots) {
+                if (slot.player) {
+                    const { points, stats } = generateStats(slot.player.position);
+                    if (slot.slotType !== "BENCH") {
+                        homeTotal += points;
+                    }
+                    homeFumbles += stats.fumbles;
+
+                    transactions.push(
+                        db.playerPerformance.upsert({
+                            where: { playerId_weekId: { playerId: slot.player.id, weekId: week.id } },
+                            create: { playerId: slot.player.id, weekId: week.id, points, ...stats },
+                            update: { points, ...stats },
+                        })
+                    );
+                }
             }
-        }
 
-        // Away Team Starters
-        for (const slot of matchup.awayTeam.rosterSlots) {
-            if (slot.player) {
-                const { points, stats } = generateStats(slot.player.position);
-                awayTotal += points;
-                transactions.push(
-                    db.playerPerformance.upsert({
-                        where: {
-                            playerId_weekId: { playerId: slot.player.id, weekId: week.id },
-                        },
-                        create: {
-                            playerId: slot.player.id,
-                            weekId: week.id,
-                            points,
-                            ...stats,
-                        },
-                        update: { points, ...stats },
-                    })
-                );
+            // --- AWAY TEAM STATS ---
+            for (const slot of matchup.awayTeam.rosterSlots) {
+                if (slot.player) {
+                    const { points, stats } = generateStats(slot.player.position);
+                    if (slot.slotType !== "BENCH") {
+                        awayTotal += points;
+                    }
+                    awayFumbles += stats.fumbles;
+
+                    transactions.push(
+                        db.playerPerformance.upsert({
+                            where: { playerId_weekId: { playerId: slot.player.id, weekId: week.id } },
+                            create: { playerId: slot.player.id, weekId: week.id, points, ...stats },
+                            update: { points, ...stats },
+                        })
+                    );
+                }
             }
+
+            // --- POWERUP LOGIC ---
+            let homeMultiplier = 1.0;
+            let homeBonus = 0;
+            let awayMultiplier = 1.0;
+            let awayBonus = 0;
+
+            console.log(`Home powerups: ${matchup.homeTeam.powerups.length}`);
+            // Apply Home Powerups
+            for (const tp of matchup.homeTeam.powerups) {
+                const p = tp.powerup;
+                if (p.scope === "self") {
+                    if (p.kind === "multiplier" && p.value) homeMultiplier *= p.value;
+                    if (p.kind === "bonus_points" && p.value) homeBonus += p.value;
+                } else if (p.scope === "opponent") {
+                    if (p.kind === "penalty" && p.value && p.code !== "CURSE_OF_THE_FUMBLE") {
+                        awayBonus -= p.value; // Generic penalty
+                    }
+                    // Specific Logic: Fumble Curse
+                    if (p.code === "CURSE_OF_THE_FUMBLE" && p.value) {
+                        awayBonus -= (awayFumbles * p.value);
+                    }
+                }
+                // Mark consumed
+                transactions.push(db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } }));
+            }
+
+            console.log(`Away powerups: ${matchup.awayTeam.powerups.length}`);
+            // Apply Away Powerups
+            for (const tp of matchup.awayTeam.powerups) {
+                const p = tp.powerup;
+                if (p.scope === "self") {
+                    if (p.kind === "multiplier" && p.value) awayMultiplier *= p.value;
+                    if (p.kind === "bonus_points" && p.value) awayBonus += p.value;
+                } else if (p.scope === "opponent") {
+                    if (p.kind === "penalty" && p.value && p.code !== "CURSE_OF_THE_FUMBLE") {
+                        homeBonus -= p.value;
+                    }
+                    if (p.code === "CURSE_OF_THE_FUMBLE" && p.value) {
+                        homeBonus -= (homeFumbles * p.value);
+                    }
+                }
+                // Mark consumed
+                transactions.push(db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } }));
+            }
+
+            // Calculate Final Scores
+            homeTotal = (homeTotal * homeMultiplier) + homeBonus;
+            awayTotal = (awayTotal * awayMultiplier) + awayBonus;
+
+            // Update Matchup
+            transactions.push(
+                db.matchup.update({
+                    where: { id: matchup.id },
+                    data: {
+                        homeScore: parseFloat(Math.max(0, homeTotal).toFixed(2)),
+                        awayScore: parseFloat(Math.max(0, awayTotal).toFixed(2)),
+                        status: "final",
+                    },
+                })
+            );
         }
 
-        // Update Matchup Score
-        transactions.push(
-            db.matchup.update({
-                where: { id: matchup.id },
-                data: {
-                    homeScore: parseFloat(homeTotal.toFixed(2)),
-                    awayScore: parseFloat(awayTotal.toFixed(2)),
-                    status: "final",
-                },
-            })
-        );
+        console.log(`Executing ${transactions.length} transactions`);
+        await db.$transaction(transactions);
+
+        revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
+        revalidatePath(`/league/${leagueId}/schedule`);
+
+        return { success: true };
+    } catch (e: any) {
+        console.error("Simulation failed:", e);
+        return { success: false, error: e.message || "Unknown error" };
     }
-
-    await db.$transaction(transactions);
-
-    revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
-    revalidatePath(`/league/${leagueId}/schedule`);
-
-    return { success: true };
 }
 
 /**

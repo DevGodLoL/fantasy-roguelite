@@ -1,9 +1,10 @@
 import { db } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { simulateWeek, advanceToNextWeek } from "./actions";
-import { revalidatePath } from "next/cache";
+import { simulateWeek } from "./actions";
 import LineupManager from "./LineupManager";
+import PackOpening from "./PackOpening";
+import OpenPackButton from "./OpenPackButton";
 
 const USER_TEAM_NAME = "The DevGods";
 
@@ -38,7 +39,7 @@ export default async function WeekPage({
                                         },
                                     },
                                 },
-                                orderBy: { slotType: "asc" },
+                                orderBy: { slotType: "asc" }, // This is usually overridden by client sorting
                             },
                         },
                     },
@@ -94,6 +95,27 @@ export default async function WeekPage({
         },
     });
 
+    // --- POWERUP LOGIC ---
+    let activePowerup = null;
+    let powerupOffers: any[] = [];
+
+    if (userTeam) {
+        // Check for active powerup
+        const tp = await db.teamPowerup.findUnique({
+            where: { teamId_weekId: { teamId: userTeam.id, weekId: week.id } },
+            include: { powerup: true }
+        });
+        if (tp) activePowerup = tp;
+
+        // Check for offers if no active powerup
+        if (!tp) {
+            powerupOffers = await db.teamPowerupOffer.findMany({
+                where: { teamId: userTeam.id, weekId: week.id, isChosen: false },
+                include: { powerup: true }
+            });
+        }
+    }
+
     // Organize roster into starters and bench
     const getOrganizedRoster = (
         slots: {
@@ -122,6 +144,7 @@ export default async function WeekPage({
     };
 
     const userRoster = userTeam ? getOrganizedRoster(userTeam.rosterSlots) : null;
+    const oppRoster = oppTeam ? getOrganizedRoster(oppTeam.rosterSlots) : null;
 
     const isLive = userMatchup?.status === "live";
     const isFinal = userMatchup?.status === "final";
@@ -199,6 +222,53 @@ export default async function WeekPage({
             </header>
 
             <main className="max-w-7xl mx-auto p-6">
+                {/* ROGUELITE SECTION */}
+                {userTeam && (
+                    <>
+                        {/* 1. Show Active Powerup if exists (Always show, even if final) */}
+                        {activePowerup && (
+                            <div className="mb-8 p-6 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border border-blue-500/30 rounded-3xl flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-2xl border border-blue-500/50">
+                                        ⚡
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-black uppercase text-blue-400 tracking-wider">Active Artifact</div>
+                                        <div className="text-xl font-bold">{activePowerup.powerup.name}</div>
+                                        <div className="text-sm text-blue-200/60">{activePowerup.powerup.description}</div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[10px] uppercase font-bold text-white/30">Status</div>
+                                    <div className={`text-sm font-bold ${activePowerup.isConsumed ? "text-zinc-500" : "text-emerald-400"}`}>
+                                        {activePowerup.isConsumed ? "CONSUMED" : "READY"}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. Show Pack Opening if offers exist (Only if NOT final) */}
+                        {!isFinal && !activePowerup && powerupOffers.length > 0 && (
+                            <PackOpening
+                                leagueId={leagueId}
+                                teamId={userTeam.id}
+                                weekId={week.id}
+                                weekNumber={weekNum}
+                                offers={powerupOffers}
+                            />
+                        )}
+
+                        {/* 3. Show Open Button if nothing active and no offers (Only if NOT final) */}
+                        {!isFinal && !activePowerup && powerupOffers.length === 0 && (
+                            <OpenPackButton
+                                leagueId={leagueId}
+                                teamId={userTeam.id}
+                                weekId={week.id}
+                            />
+                        )}
+                    </>
+                )}
+
                 {/* Matchup Header */}
                 {userMatchup && userTeam && oppTeam && (
                     <div className="mb-8">
@@ -256,6 +326,21 @@ export default async function WeekPage({
                                 starters={userRoster.starters}
                                 bench={userRoster.bench}
                                 isFinal={isFinal}
+                                title={`${userTeam?.name || "Your Lineup"}`}
+                            />
+                        )}
+                    </div>
+                    {/* Opponent Roster */}
+                    <div>
+                        {oppRoster && (
+                            <LineupManager
+                                leagueId={leagueId}
+                                weekNumber={weekNum}
+                                starters={oppRoster.starters}
+                                bench={oppRoster.bench}
+                                isFinal={isFinal}
+                                readOnly={true}
+                                title={`${oppTeam?.name || "Opponent"}`}
                             />
                         )}
                     </div>

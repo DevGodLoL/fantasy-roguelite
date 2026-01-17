@@ -22,6 +22,8 @@ interface LineupManagerProps {
     starters: RosterSlot[];
     bench: RosterSlot[];
     isFinal: boolean;
+    readOnly?: boolean;
+    title?: string;
 }
 
 const posColors: Record<string, string> = {
@@ -41,6 +43,8 @@ export default function LineupManager({
     starters,
     bench,
     isFinal,
+    readOnly = false,
+    title = "Your Lineup",
 }: LineupManagerProps) {
     const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
     const [isSwapping, setIsSwapping] = useState(false);
@@ -61,7 +65,7 @@ export default function LineupManager({
     });
 
     const handleSlotClick = async (slotId: string) => {
-        if (isFinal || isSwapping) return;
+        if (isFinal || isSwapping || readOnly) return;
 
         if (selectedSlotId === null) {
             setSelectedSlotId(slotId);
@@ -85,15 +89,18 @@ export default function LineupManager({
     const renderSlot = (slot: RosterSlot, isBench = false) => {
         const isSelected = selectedSlotId === slot.id;
         const colorClass = posColors[isBench ? "BENCH" : slot.slotType] || "text-zinc-500";
+        const interactiveClasses = !isFinal && !readOnly
+            ? "cursor-pointer group hover:border-white/20 active:scale-95"
+            : "pointer-events-none opacity-90";
 
         return (
             <div
                 key={slot.id}
                 onClick={() => handleSlotClick(slot.id)}
-                className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer group ${isSelected
+                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected
                     ? "bg-white/10 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-[1.02] z-10"
-                    : "bg-zinc-900/50 border-white/5 hover:border-white/20 active:scale-95"
-                    } ${isFinal ? "opacity-80 pointer-events-none" : ""}`}
+                    : "bg-zinc-900/50 border-white/5"
+                    } ${interactiveClasses}`}
             >
                 <div className="flex items-center gap-3">
                     <span
@@ -113,7 +120,7 @@ export default function LineupManager({
                         )}
                     </div>
                 </div>
-                {!isFinal && (
+                {!isFinal && !readOnly && (
                     <div className="text-[10px] font-black opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 uppercase">
                         {isSelected ? "Cancel" : selectedSlotId ? "Swap Here" : "Move"}
                     </div>
@@ -130,7 +137,7 @@ export default function LineupManager({
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-black text-emerald-400 uppercase tracking-tight">Your Lineup</h2>
+                <h2 className="text-lg font-black text-emerald-400 uppercase tracking-tight">{title}</h2>
                 {!isFinal && (
                     <span className="text-[10px] text-zinc-500 uppercase font-bold animate-pulse">
                         {selectedSlotId ? "Select another slot to swap" : "Click a player to move them"}
