@@ -33,6 +33,7 @@ model League {
   weeks    Week[]
   settings LeagueSettings?
   matchups Matchup[]
+  draft    Draft?
 
   @@unique([name])
 }
@@ -62,6 +63,7 @@ model LeagueSettings {
   rosterDST  Int @default(1)
   rosterK    Int @default(1)
   bench      Int @default(6)
+  initialFaab Int @default(100)
 
   // scoring preset (PPR v1)
   passingYardsPerPoint Float @default(25) // 1 pt per 25 pass yds
@@ -97,6 +99,10 @@ model Team {
   powerups       TeamPowerup[]
   powerupOffers  TeamPowerupOffer[]
   weekStats      TeamWeekStats[]
+  draftPicks     DraftPick[]
+  waiverPriority Int                @default(1)
+  faabBalance    Int                @default(100)
+  waiverClaims   WaiverClaim[]
 
   @@unique([leagueId, ownerId])
 }
@@ -161,6 +167,9 @@ model Player {
   teamAbbr    String?
 
   rosterSlots RosterSlot[]
+  draftPicks  DraftPick[]
+  waiverClaims WaiverClaim[] @relation("PlayerToAdd")
+  dropClaims   WaiverClaim[] @relation("PlayerToDrop")
 }
 
 model RosterSlot {
@@ -219,4 +228,51 @@ model TeamPowerupOffer {
 
   @@unique([teamId, weekId, powerupId])
   @@index([teamId, weekId])
+}
+
+model Draft {
+  id          String   @id @default(cuid())
+  leagueId    String   @unique
+  status      String   @default("pre_draft") // pre_draft | drafting | completed
+  currentPick Int      @default(1)
+  format      String   @default("snake") // snake | linear
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  league League      @relation(fields: [leagueId], references: [id])
+  picks  DraftPick[]
+}
+
+model DraftPick {
+  id         String @id @default(cuid())
+  draftId    String
+  teamId     String
+  playerId   String?
+  pickNumber Int
+  round      Int
+
+  draft  Draft   @relation(fields: [draftId], references: [id])
+  team   Team    @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@unique([draftId, pickNumber])
+  @@index([teamId])
+}
+
+model WaiverClaim {
+  id           String    @id @default(cuid())
+  teamId       String
+  playerId     String    // Player to add
+  dropPlayerId String?   // Player to drop
+  bidAmount    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  processedAt  DateTime?
+  status       String    @default("pending") // pending | successful | failed
+  reason       String?
+
+  team         Team    @relation(fields: [teamId], references: [id])
+  playerToAdd  Player  @relation("PlayerToAdd", fields: [playerId], references: [id])
+  playerToDrop Player? @relation("PlayerToDrop", fields: [dropPlayerId], references: [id])
+
+  @@index([teamId, status])
 }
