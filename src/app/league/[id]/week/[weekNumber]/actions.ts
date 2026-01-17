@@ -412,10 +412,10 @@ export async function swapLineupSlots(
     fromSlotId: string,
     toSlotId: string
 ) {
-    // Basic verification: simplify for now by just swapping playerIds
+    // Fetch slots with player details to verify positions
     const [fromSlot, toSlot] = await Promise.all([
-        db.rosterSlot.findUnique({ where: { id: fromSlotId } }),
-        db.rosterSlot.findUnique({ where: { id: toSlotId } }),
+        db.rosterSlot.findUnique({ where: { id: fromSlotId }, include: { player: true } }),
+        db.rosterSlot.findUnique({ where: { id: toSlotId }, include: { player: true } }),
     ]);
 
     if (!fromSlot || !toSlot) {
@@ -425,6 +425,22 @@ export async function swapLineupSlots(
     // Ensure they belong to the same team
     if (fromSlot.teamId !== toSlot.teamId) {
         throw new Error("Cannot swap players between different teams");
+    }
+
+    // HELPER: Check if player fits in slot
+    const canFit = (player: { position: string } | null, slotType: string) => {
+        if (!player) return true;
+        if (slotType === "BENCH") return true;
+        if (slotType === "FLEX") return ["RB", "WR", "TE"].includes(player.position);
+        return slotType === player.position;
+    };
+
+    // Validate Move
+    if (!canFit(fromSlot.player, toSlot.slotType)) {
+        throw new Error(`Cannot move ${fromSlot.player?.name} (${fromSlot.player?.position}) to ${toSlot.slotType} slot.`);
+    }
+    if (!canFit(toSlot.player, fromSlot.slotType)) {
+        throw new Error(`Cannot move ${toSlot.player?.name} (${toSlot.player?.position}) to ${fromSlot.slotType} slot.`);
     }
 
     // Perform the swap

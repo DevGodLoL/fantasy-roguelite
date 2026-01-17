@@ -64,6 +64,28 @@ export default function LineupManager({
         return (sortOrder[a.slotType] || 99) - (sortOrder[b.slotType] || 99);
     });
 
+    const checkFit = (player: Player | null, slotType: string) => {
+        if (!player) return true;
+        if (slotType === "BENCH") return true;
+        if (slotType === "FLEX") return ["RB", "WR", "TE"].includes(player.position);
+        return slotType === player.position;
+    };
+
+    const isSwapValid = (id1: string, id2: string) => {
+        // Find slots in either starters or bench
+        const s1 = [...starters, ...bench].find(s => s.id === id1);
+        const s2 = [...starters, ...bench].find(s => s.id === id2);
+
+        if (!s1 || !s2) return false;
+
+        // Check 1 -> 2
+        if (!checkFit(s1.player, s2.slotType)) return false;
+        // Check 2 -> 1
+        if (!checkFit(s2.player, s1.slotType)) return false;
+
+        return true;
+    };
+
     const handleSlotClick = async (slotId: string) => {
         if (isFinal || isSwapping || readOnly) return;
 
@@ -72,13 +94,21 @@ export default function LineupManager({
         } else if (selectedSlotId === slotId) {
             setSelectedSlotId(null);
         } else {
+            // Validate before swapping
+            if (!isSwapValid(selectedSlotId, slotId)) {
+                // Determine why invalid for alert? Nah just generic.
+                alert("Invalid Move: Player position does not match slot type.");
+                setSelectedSlotId(null);
+                return;
+            }
+
             // Swap!
             setIsSwapping(true);
             try {
                 await swapLineupSlots(leagueId, weekNumber, selectedSlotId, slotId);
             } catch (err) {
                 console.error("Failed to swap lineup:", err);
-                alert("Can't swap these slots. Make sure they are for the same team.");
+                alert("Can't swap these slots. " + (err instanceof Error ? err.message : ""));
             } finally {
                 setSelectedSlotId(null);
                 setIsSwapping(false);
@@ -88,15 +118,22 @@ export default function LineupManager({
 
     const renderSlot = (slot: RosterSlot, isBench = false) => {
         const isSelected = selectedSlotId === slot.id;
+        // Check validity if something IS selected
+        const isValidTarget = selectedSlotId && selectedSlotId !== slot.id && isSwapValid(selectedSlotId, slot.id);
+        const isInvalidTarget = selectedSlotId && selectedSlotId !== slot.id && !isValidTarget;
+
         const colorClass = posColors[isBench ? "BENCH" : slot.slotType] || "text-zinc-500";
-        const interactiveClasses = !isFinal && !readOnly
+        // If invalid target, reduce opacity and disable pointer events
+        const interactiveClasses = !isFinal && !readOnly && !isInvalidTarget
             ? "cursor-pointer group hover:border-white/20 active:scale-95"
-            : "pointer-events-none opacity-90";
+            : !isFinal && !readOnly && isInvalidTarget
+                ? "cursor-not-allowed opacity-40 grayscale"
+                : "pointer-events-none opacity-90";
 
         return (
             <div
                 key={slot.id}
-                onClick={() => handleSlotClick(slot.id)}
+                onClick={() => !isInvalidTarget && handleSlotClick(slot.id)}
                 className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected
                     ? "bg-white/10 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-[1.02] z-10"
                     : "bg-zinc-900/50 border-white/5"
@@ -120,8 +157,8 @@ export default function LineupManager({
                         )}
                     </div>
                 </div>
-                {!isFinal && !readOnly && (
-                    <div className="text-[10px] font-black opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 uppercase">
+                {!isFinal && !readOnly && !isInvalidTarget && (
+                    <div className={`text-[10px] font-black uppercase transition-opacity ${isValidTarget ? 'opacity-100 text-emerald-400' : 'opacity-0 group-hover:opacity-100 text-blue-500'}`}>
                         {isSelected ? "Cancel" : selectedSlotId ? "Swap Here" : "Move"}
                     </div>
                 )}
