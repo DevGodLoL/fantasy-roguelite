@@ -166,6 +166,12 @@ export default async function LeaguePage({
                   >
                     Waiver Wire
                   </Link>
+                  <Link
+                    href={`/league/${id}/inventory`}
+                    className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-xs rounded-full transition-all"
+                  >
+                    Artifacts
+                  </Link>
                 </div>
               )}
             </div>
