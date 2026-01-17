@@ -116,7 +116,7 @@ export default async function DraftRoom({
 
     const availablePlayers = await db.player.findMany({
         where: { id: { notIn: draftedPlayerIds } },
-        orderBy: { name: "asc" },
+        orderBy: { adp: "asc" },
     });
 
     // Position colors

@@ -161,6 +161,7 @@ model Player {
   name        String
   position    String // QB/RB/WR/TE/DST/K
   teamAbbr    String?
+  adp         Float   @default(999) // Average Draft Position for rankings
 
   rosterSlots  RosterSlot[]
   draftPicks   DraftPick[]

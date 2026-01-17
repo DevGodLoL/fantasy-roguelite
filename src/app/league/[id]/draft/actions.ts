@@ -8,8 +8,8 @@ const USER_TEAM_NAME = "The DevGods";
 
 /**
  * Get the best available player for AI auto-drafting.
- * Uses a simple priority: QB > RB > WR > TE > DST > K
- * Considers team roster needs.
+ * Uses ADP (Average Draft Position) with some randomness for variety.
+ * Also considers team roster needs to prioritize filling empty starter slots.
  */
 async function getBestAvailablePlayer(leagueId: string, teamId: string) {
     // Get already-drafted player IDs in this league
@@ -26,82 +26,49 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
         include: { player: true },
     });
 
-    const filledPositions: Record<string, number> = {};
     const emptySlots: Record<string, number> = {};
-
     for (const slot of teamSlots) {
-        if (slot.playerId) {
-            filledPositions[slot.slotType] = (filledPositions[slot.slotType] || 0) + 1;
-        } else {
+        if (!slot.playerId) {
             emptySlots[slot.slotType] = (emptySlots[slot.slotType] || 0) + 1;
         }
     }
 
-    // Priority order for drafting (RB and WR first since they have 2 slots each)
-    const positionPriority = ["RB", "WR", "QB", "TE", "FLEX", "DST", "K"];
+    // Determine positions the team still needs for starters
+    const neededPositions: string[] = [];
+    if ((emptySlots["QB"] || 0) > 0) neededPositions.push("QB");
+    if ((emptySlots["RB"] || 0) > 0) neededPositions.push("RB");
+    if ((emptySlots["WR"] || 0) > 0) neededPositions.push("WR");
+    if ((emptySlots["TE"] || 0) > 0) neededPositions.push("TE");
+    if ((emptySlots["FLEX"] || 0) > 0) neededPositions.push("RB", "WR", "TE");
+    if ((emptySlots["DST"] || 0) > 0) neededPositions.push("DST");
+    if ((emptySlots["K"] || 0) > 0) neededPositions.push("K");
 
-    // Find position with most need (empty starter slots first)
-    let targetPosition: string | null = null;
-    for (const pos of positionPriority) {
-        if ((emptySlots[pos] || 0) > 0) {
-            targetPosition = pos;
-            break;
+    // Get top available players by ADP
+    const topAvailable = await db.player.findMany({
+        where: { id: { notIn: draftedPlayerIds } },
+        orderBy: { adp: "asc" },
+        take: 15, // Get top 15 by ADP
+    });
+
+    if (topAvailable.length === 0) return null;
+
+    // If team has starter needs, try to find a player that fills a need
+    // But also consider ADP - don't reach too far
+    if (neededPositions.length > 0) {
+        // Look at top 10 by ADP and see if any fill a need
+        const needFiller = topAvailable.slice(0, 10).find((p) =>
+            neededPositions.includes(p.position)
+        );
+        if (needFiller) {
+            return needFiller;
         }
     }
 
-    // If all starters filled, go for bench
-    if (!targetPosition && (emptySlots["BENCH"] || 0) > 0) {
-        targetPosition = null; // Any position for bench
-    }
-
-    // Find available players
-    let availablePlayers;
-    if (targetPosition && targetPosition !== "FLEX") {
-        availablePlayers = await db.player.findMany({
-            where: {
-                id: { notIn: draftedPlayerIds },
-                position: targetPosition,
-            },
-            orderBy: { name: "asc" },
-            take: 10,
-        });
-    } else if (targetPosition === "FLEX") {
-        // FLEX can be RB, WR, or TE
-        availablePlayers = await db.player.findMany({
-            where: {
-                id: { notIn: draftedPlayerIds },
-                position: { in: ["RB", "WR", "TE"] },
-            },
-            orderBy: { name: "asc" },
-            take: 10,
-        });
-    } else {
-        // Just get any available player
-        availablePlayers = await db.player.findMany({
-            where: { id: { notIn: draftedPlayerIds } },
-            orderBy: { name: "asc" },
-            take: 10,
-        });
-    }
-
-    // Return a random player from top available (adds variety to AI picks)
-    if (availablePlayers.length > 0) {
-        const randomIndex = Math.floor(Math.random() * Math.min(3, availablePlayers.length));
-        return availablePlayers[randomIndex];
-    }
-
-    // Fallback: if no players found for target position, get any available player
-    const anyPlayer = await db.player.findMany({
-        where: { id: { notIn: draftedPlayerIds } },
-        orderBy: { name: "asc" },
-        take: 5,
-    });
-
-    if (anyPlayer.length > 0) {
-        return anyPlayer[Math.floor(Math.random() * anyPlayer.length)];
-    }
-
-    return null;
+    // Otherwise, just take best available by ADP with slight randomization
+    // Pick from top 3 to add variety
+    const pickPool = topAvailable.slice(0, Math.min(3, topAvailable.length));
+    const randomIndex = Math.floor(Math.random() * pickPool.length);
+    return pickPool[randomIndex];
 }
 
 /**

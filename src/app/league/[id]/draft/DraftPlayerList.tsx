@@ -8,6 +8,7 @@ interface Player {
     name: string;
     position: string;
     teamAbbr: string | null;
+    adp: number;
 }
 
 interface DraftPlayerListProps {
