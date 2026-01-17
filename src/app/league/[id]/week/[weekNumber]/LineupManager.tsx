@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { swapLineupSlots } from "./actions";
+import { usePlayerModal } from "@/context/PlayerModalContext";
 
 interface Player {
     id: string;
@@ -48,6 +49,7 @@ export default function LineupManager({
 }: LineupManagerProps) {
     const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
     const [isSwapping, setIsSwapping] = useState(false);
+    const { openPlayerModal } = usePlayerModal();
 
     // Standard Fantasy Sort Order
     const sortOrder: Record<string, number> = {
@@ -147,7 +149,15 @@ export default function LineupManager({
                         {isBench ? "BN" : slot.slotType}
                     </span>
                     <div>
-                        <div className={`font-bold text-sm transition-colors ${isSelected ? "text-white" : "text-zinc-200"}`}>
+                        <div
+                            className={`font-bold text-sm transition-colors hover:underline cursor-pointer relative z-20 ${isSelected ? "text-white" : "text-zinc-200"}`}
+                            onClick={(e) => {
+                                if (slot.player) {
+                                    e.stopPropagation();
+                                    openPlayerModal(slot.player.id);
+                                }
+                            }}
+                        >
                             {slot.player?.name || <span className="text-zinc-600 italic">Empty Slot</span>}
                         </div>
                         {slot.player && (

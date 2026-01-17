@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { swapRosterSlots, dropPlayer } from "../actions";
+import { usePlayerModal } from "@/context/PlayerModalContext";
 
 interface Player {
     id: string;
@@ -27,6 +28,7 @@ interface RosterManagerProps {
 export default function RosterManager({ leagueId, teamId, slots, readOnly = false }: RosterManagerProps) {
     const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
     const [isPending, setIsPending] = useState(false);
+    const { openPlayerModal } = usePlayerModal();
 
     const checkFit = (player: Player | null, slotType: string) => {
         if (!player) return true;
@@ -123,7 +125,15 @@ export default function RosterManager({ leagueId, teamId, slots, readOnly = fals
                                 <td className="px-6 py-5">
                                     {slot.player ? (
                                         <div className="flex flex-col">
-                                            <span className={`font-bold ${isSelected ? 'text-purple-300' : 'text-zinc-100'}`}>{slot.player.name}</span>
+                                            <span
+                                                className={`font-bold hover:underline cursor-pointer z-20 relative ${isSelected ? 'text-purple-300' : 'text-zinc-100'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openPlayerModal(slot.player!.id);
+                                                }}
+                                            >
+                                                {slot.player.name}
+                                            </span>
                                             <span className="text-[10px] text-zinc-500 font-mono uppercase">
                                                 {slot.player.position} — {slot.player.teamAbbr}
                                             </span>

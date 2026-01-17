@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from "react";
 import ClaimModal from "./ClaimModal";
+import { usePlayerModal } from "@/context/PlayerModalContext";
 
 interface Player {
     id: string;
@@ -38,6 +39,7 @@ export default function WaiverPlayerList({ leagueId, userTeam, players }: Waiver
     const [searchQuery, setSearchQuery] = useState("");
     const [positionFilter, setPositionFilter] = useState<string | null>(null);
     const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+    const { openPlayerModal } = usePlayerModal(); // Use Hook
 
     // Limit displayed players to avoid lag
     const DISPLAY_LIMIT = 50;
@@ -117,7 +119,12 @@ export default function WaiverPlayerList({ leagueId, userTeam, players }: Waiver
                                 <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${posColors[player.position]?.split(" ")[0] || "text-zinc-500"}`}>
                                     {player.position} · {player.teamAbbr}
                                 </div>
-                                <div className="text-lg font-black leading-tight">{player.name}</div>
+                                <div
+                                    className="text-lg font-black leading-tight cursor-pointer hover:text-blue-400 transition-colors"
+                                    onClick={() => openPlayerModal(player.id)}
+                                >
+                                    {player.name}
+                                </div>
                             </div>
                             <div className="text-right">
                                 <div className="text-[10px] font-mono text-zinc-600">ADP</div>
