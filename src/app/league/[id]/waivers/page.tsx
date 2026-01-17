@@ -1,6 +1,7 @@
 import { db } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import WaiverPlayerList from "./WaiverPlayerList";
 import { submitWaiverClaim, processWaivers, cancelClaim } from "./actions";
 
 export default async function WaiversPage({
@@ -26,6 +27,9 @@ export default async function WaiversPage({
 
     if (!league) notFound();
 
+    // Identify User Team (Mock: "The DevGods" or fallback to first team)
+    const userTeam = league.teams.find((t) => t.name === "The DevGods") || league.teams[0];
+
     const rosteredPlayerIds = await db.rosterSlot
         .findMany({
             where: { team: { leagueId }, playerId: { not: null } },
@@ -35,7 +39,8 @@ export default async function WaiversPage({
 
     const availablePlayers = await db.player.findMany({
         where: { id: { notIn: rosteredPlayerIds } },
-        orderBy: { name: "asc" },
+        orderBy: { adp: "asc" },
+        take: 500, // Limit to top 500 available players to prevent crash
     });
 
     const pendingClaims = await db.waiverClaim.findMany({
@@ -122,69 +127,12 @@ export default async function WaiversPage({
                 </aside>
 
                 {/* Center: Available Players */}
-                <main className="lg:col-span-9 p-12 overflow-y-auto custom-scrollbar bg-black">
-                    <div className="max-w-4xl mx-auto space-y-12">
-                        <div className="flex flex-col md:flex-row items-end justify-between gap-6">
-                            <div>
-                                <h2 className="text-xs font-black uppercase tracking-[0.4em] text-blue-500 mb-2">Marketplace</h2>
-                                <h3 className="text-5xl font-black tracking-tighter">Available Mercenaries</h3>
-                            </div>
-                            <div className="flex gap-4">
-                                <input
-                                    type="text"
-                                    placeholder="Search by name, position..."
-                                    className="bg-zinc-900 border border-white/10 rounded-2xl px-6 py-3 text-sm focus:outline-none focus:border-blue-500 transition-all w-64"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                            {availablePlayers.map((player) => (
-                                <div key={player.id} className="group p-6 bg-zinc-900/30 border border-white/5 rounded-[2rem] hover:border-blue-500/30 transition-all hover:bg-zinc-900/50">
-                                    <div className="flex justify-between items-center">
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-500/80">{player.position} · {player.teamAbbr}</div>
-                                            <div className="text-xl font-black">{player.name}</div>
-                                        </div>
-                                        <div className="text-right">
-                                            {/* Mocking a bid form for Team 1 (The DevGods) for simplicity in demo */}
-                                            <form action={async (formData) => {
-                                                "use server";
-                                                const bid = Number(formData.get("bid"));
-                                                const dropId = formData.get("dropId") as string;
-                                                // Auto-detect Team 1 ID for demo
-                                                const team1 = league.teams.find(t => t.name === "The DevGods")!;
-                                                await submitWaiverClaim(leagueId, team1.id, player.id, bid, dropId || undefined);
-                                            }} className="flex flex-col gap-2 items-end">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-black text-zinc-500">$</span>
-                                                    <input
-                                                        name="bid"
-                                                        type="number"
-                                                        defaultValue={0}
-                                                        className="w-16 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:border-blue-500"
-                                                    />
-                                                    <button type="submit" className="px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase rounded-lg hover:bg-blue-400 transition-all">Bid</button>
-                                                </div>
-                                                <select
-                                                    name="dropId"
-                                                    className="bg-black/40 border border-white/5 rounded-lg px-2 py-1 text-[10px] text-zinc-500 focus:outline-none"
-                                                >
-                                                    <option value="">No Drop</option>
-                                                    {league.teams.find(t => t.name === "The DevGods")?.rosterSlots
-                                                        .filter(s => s.player)
-                                                        .map(s => (
-                                                            <option key={s.id} value={s.player!.id}>Drop {s.player!.name}</option>
-                                                        ))
-                                                    }
-                                                </select>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                <main className="lg:col-span-9 p-8 md:p-12 overflow-hidden h-[calc(100vh-5rem)]">
+                    <WaiverPlayerList
+                        leagueId={leagueId}
+                        players={availablePlayers}
+                        userTeam={userTeam}
+                    />
                 </main>
             </div>
         </div>
