@@ -35,7 +35,8 @@ export default async function SchedulePage({
     }
 
     const isDraftComplete = league.draft?.status === "completed";
-    const hasSchedule = league.weeks.length > 0;
+    // Check if any week has matchups (not just if weeks exist)
+    const hasSchedule = league.weeks.some(w => w.matchups.length > 0);
 
     // Format team name for display
     const formatTeamName = (name: string) => {
@@ -104,10 +105,10 @@ export default async function SchedulePage({
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-lg font-black text-white">Week {week.number}</h3>
                                         <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase ${week.matchups.every(m => m.status === "final")
-                                                ? "bg-emerald-500/20 text-emerald-400"
-                                                : week.matchups.some(m => m.status === "live")
-                                                    ? "bg-yellow-500/20 text-yellow-400"
-                                                    : "bg-zinc-800 text-zinc-400"
+                                            ? "bg-emerald-500/20 text-emerald-400"
+                                            : week.matchups.some(m => m.status === "live")
+                                                ? "bg-yellow-500/20 text-yellow-400"
+                                                : "bg-zinc-800 text-zinc-400"
                                             }`}>
                                             {week.matchups.every(m => m.status === "final")
                                                 ? "Complete"
