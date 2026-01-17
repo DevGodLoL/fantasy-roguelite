@@ -1,0 +1,222 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// --- MODELS START HERE ---
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teams   Team[]
+  leagues LeagueMember[]
+}
+
+model League {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  LeagueMember[]
+  teams    Team[]
+  weeks    Week[]
+  settings LeagueSettings?
+  matchups Matchup[]
+
+  @@unique([name])
+}
+
+model LeagueMember {
+  id       String @id @default(cuid())
+  leagueId String
+  userId   String
+  role     String @default("owner") // owner | member
+
+  league League @relation(fields: [leagueId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([leagueId, userId])
+}
+
+model LeagueSettings {
+  id       String @id @default(cuid())
+  leagueId String @unique
+
+  // roster layout (simple v1)
+  rosterQB   Int @default(1)
+  rosterRB   Int @default(2)
+  rosterWR   Int @default(2)
+  rosterTE   Int @default(1)
+  rosterFLEX Int @default(1) // RB/WR/TE
+  rosterDST  Int @default(1)
+  rosterK    Int @default(1)
+  bench      Int @default(6)
+
+  // scoring preset (PPR v1)
+  passingYardsPerPoint Float @default(25) // 1 pt per 25 pass yds
+  passingTdPoints      Int   @default(4)
+  interceptionPoints   Int   @default(-2)
+
+  rushingYardsPerPoint Float @default(10) // 1 pt per 10 rush yds
+  rushingTdPoints      Int   @default(6)
+
+  receivingYardsPerPoint Float @default(10) // 1 pt per 10 rec yds
+  receivingTdPoints      Int   @default(6)
+  receptionPoints        Float @default(1) // PPR
+
+  fumbleLostPoints Int @default(-2)
+
+  league League @relation(fields: [leagueId], references: [id])
+}
+
+
+model Team {
+  id        String   @id @default(cuid())
+  leagueId  String
+  ownerId   String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  league         League             @relation(fields: [leagueId], references: [id])
+  owner          User               @relation(fields: [ownerId], references: [id])
+  rosterSlots    RosterSlot[]
+  homeMatchups   Matchup[]          @relation("HomeTeam")
+  awayMatchups   Matchup[]          @relation("AwayTeam")
+  powerups       TeamPowerup[]
+  powerupOffers  TeamPowerupOffer[]
+  weekStats      TeamWeekStats[]
+
+  @@unique([leagueId, ownerId])
+}
+
+model Week {
+  id        String   @id @default(cuid())
+  leagueId  String
+  number    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  league         League             @relation(fields: [leagueId], references: [id])
+  matchups       Matchup[]
+  powerups       TeamPowerup[]
+  powerupOffers  TeamPowerupOffer[]
+  teamStats      TeamWeekStats[]
+
+  @@unique([leagueId, number])
+}
+
+model TeamWeekStats {
+  id        String   @id @default(cuid())
+  teamId    String
+  weekId    String
+  passYds   Int      @default(0)
+  rushYds   Int      @default(0)
+  recYds    Int      @default(0)
+
+  team      Team     @relation(fields: [teamId], references: [id])
+  week      Week     @relation(fields: [weekId], references: [id])
+
+  @@unique([teamId, weekId])
+}
+
+
+model Matchup {
+  id       String @id @default(cuid())
+  leagueId String
+  weekId   String
+
+  homeTeamId String
+  awayTeamId String
+
+  homeScore Float  @default(0)
+  awayScore Float  @default(0)
+  status    String @default("scheduled") // scheduled | live | final
+
+  league   League @relation(fields: [leagueId], references: [id])
+  week     Week   @relation(fields: [weekId], references: [id])
+  homeTeam Team   @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam Team   @relation("AwayTeam", fields: [awayTeamId], references: [id])
+
+  @@unique([weekId, homeTeamId])
+  @@unique([weekId, awayTeamId])
+}
+
+model Player {
+  id          String  @id @default(cuid())
+  nflPlayerId String  @unique // later map to real NFL IDs
+  name        String
+  position    String // QB/RB/WR/TE/DST/K
+  teamAbbr    String?
+
+  rosterSlots RosterSlot[]
+}
+
+model RosterSlot {
+  id        String  @id @default(cuid())
+  teamId    String
+  playerId  String?
+  slotType  String // QB/RB/WR/TE/FLEX/DST/K/BENCH
+  isStarter Boolean @default(false)
+
+  team   Team    @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@index([teamId, slotType])
+}
+
+model Powerup {
+  id          String  @id @default(cuid())
+  code        String  @unique // e.g., QB_PASS_YARDS_X15
+  name        String
+  description String
+  rarity      String  @default("common") // common/rare/epic/legendary
+  scope       String  @default("self") // self/opponent
+  duration    String  @default("week") // week/season
+  kind        String?
+  value       Float?
+
+  teamPowerups      TeamPowerup[]
+  teamPowerupOffers TeamPowerupOffer[]
+}
+
+model TeamPowerup {
+  id         String  @id @default(cuid())
+  teamId     String
+  powerupId  String
+  weekId     String?
+  isConsumed Boolean @default(false)
+
+  team    Team    @relation(fields: [teamId], references: [id])
+  powerup Powerup @relation(fields: [powerupId], references: [id])
+  week    Week?   @relation(fields: [weekId], references: [id])
+
+  @@index([teamId, isConsumed])
+}
+
+model TeamPowerupOffer {
+  id        String   @id @default(cuid())
+  teamId    String
+  weekId    String
+  powerupId String
+  createdAt DateTime @default(now())
+  isChosen  Boolean  @default(false)
+
+  team    Team    @relation(fields: [teamId], references: [id])
+  week    Week    @relation(fields: [weekId], references: [id])
+  powerup Powerup @relation(fields: [powerupId], references: [id])
+
+  @@unique([teamId, weekId, powerupId])
+  @@index([teamId, weekId])
+}
