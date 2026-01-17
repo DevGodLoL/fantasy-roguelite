@@ -2,6 +2,7 @@ import { db } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { addPlayerToRoster, dropPlayer } from "../actions";
+import RosterManager from "./RosterManager";
 
 export default async function TeamPage({
     params,
@@ -146,53 +147,11 @@ export default async function TeamPage({
                             {/* Main Roster Table */}
                             <section className="lg:col-span-2 space-y-6">
                                 <h2 className="text-xs font-black uppercase tracking-[0.2em] text-purple-500/80">Battle Formation</h2>
-                                <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-3xl overflow-hidden backdrop-blur-sm">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="border-b border-zinc-800/50 text-zinc-500 text-[10px] uppercase font-bold tracking-widest">
-                                                <th className="px-6 py-4">Slot</th>
-                                                <th className="px-6 py-4">Player</th>
-                                                <th className="px-6 py-4 text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-zinc-800/30">
-                                            {sortedRoster.map((slot) => (
-                                                <tr key={slot.id} className="group hover:bg-white/[0.02] transition-colors">
-                                                    <td className="px-6 py-5">
-                                                        <span className={`text-xs font-black px-2 py-1 rounded ${slot.isStarter ? 'bg-purple-500/10 text-purple-400' : 'bg-zinc-800 text-zinc-500'
-                                                            }`}>
-                                                            {slot.slotType === "BENCH" ? "BN" : slot.slotType}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-5">
-                                                        {slot.player ? (
-                                                            <div className="flex flex-col">
-                                                                <span className="font-bold text-zinc-100">{slot.player.name}</span>
-                                                                <span className="text-[10px] text-zinc-500 font-mono uppercase">
-                                                                    {slot.player.position} — {slot.player.teamAbbr}
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-zinc-700 italic text-sm">Empty Slot</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-6 py-5 text-right">
-                                                        {slot.player && (
-                                                            <form action={async () => {
-                                                                "use server";
-                                                                await dropPlayer(leagueId, teamId, slot.id);
-                                                            }}>
-                                                                <button className="text-xs font-bold text-zinc-600 hover:text-red-400 transition-colors uppercase tracking-tighter">
-                                                                    Release
-                                                                </button>
-                                                            </form>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <RosterManager
+                                    leagueId={leagueId}
+                                    teamId={teamId}
+                                    slots={sortedRoster}
+                                />
                             </section>
 
                             {/* Side Drawer: Available Players */}

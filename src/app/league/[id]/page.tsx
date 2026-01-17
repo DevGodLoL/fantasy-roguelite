@@ -112,6 +112,9 @@ export default async function LeaguePage({
 
   const teamStats = Array.from(teamStatsMap.values());
 
+  // Identify User Team (Mock: "The DevGods" or fallback to first team)
+  const userTeam = league.teams.find((t) => t.name === "The DevGods") || league.teams[0];
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-purple-500/30">
       {/* Background Decor */}
@@ -145,6 +148,12 @@ export default async function LeaguePage({
                 </Link>
               ) : (
                 <div className="flex gap-3">
+                  <Link
+                    href={`/league/${id}/team/${userTeam.id}`}
+                    className="px-6 py-2 bg-zinc-100 hover:bg-white text-black font-black uppercase text-xs rounded-full transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                  >
+                    My Team
+                  </Link>
                   <Link
                     href={`/league/${id}/schedule`}
                     className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase text-xs rounded-full transition-all"
