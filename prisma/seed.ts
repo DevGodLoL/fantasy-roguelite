@@ -318,6 +318,7 @@ async function main() {
 
   console.log("6) Upserting Powerups...");
   const powerups = [
+    // Production powerups
     {
       code: "XP_BOOST_15",
       name: "Experience Relic",
@@ -343,6 +344,39 @@ async function main() {
       kind: "penalty",
       value: 5.0,
     },
+    // Verification powerups
+    {
+      code: "PLUS_10",
+      name: "Small Blessing",
+      description: "Add 10 bonus points this week.",
+      rarity: "common",
+      kind: "bonus_points",
+      value: 10.0,
+    },
+    {
+      code: "PASS_YDS_X15",
+      name: "Aerial Assault",
+      description: "1.5x multiplier on passing yards.",
+      rarity: "rare",
+      kind: "multiplier",
+      value: 1.5,
+    },
+    {
+      code: "RUSH_YDS_X15",
+      name: "Ground Game",
+      description: "1.5x multiplier on rushing yards.",
+      rarity: "rare",
+      kind: "multiplier",
+      value: 1.5,
+    },
+    {
+      code: "REC_YDS_X15",
+      name: "Sticky Hands",
+      description: "1.5x multiplier on receiving yards.",
+      rarity: "rare",
+      kind: "multiplier",
+      value: 1.5,
+    },
   ];
 
   for (const p of powerups) {
@@ -350,6 +384,16 @@ async function main() {
       where: { code: p.code },
       update: p,
       create: p,
+    });
+  }
+
+  console.log("7) Creating Season Weeks...");
+  for (let i = 1; i <= 18; i++) {
+    await prisma.week.create({
+      data: {
+        leagueId: league.id,
+        number: i,
+      },
     });
   }
 

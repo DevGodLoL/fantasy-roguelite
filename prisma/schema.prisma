@@ -37,7 +37,7 @@ model League {
   teams    Team[]
   settings LeagueSettings?
   weeks    Week[]
-  drafts   Draft[]
+  draft    Draft?
   matchups Matchup[]
 }
 
@@ -245,8 +245,9 @@ model TeamPowerupOffer {
 model Draft {
   id       String   @id @default(cuid())
   leagueId String   @unique
-  status   String   @default("open") // open | running | completed
-  format   String   @default("snake") // snake | linear
+  status      String   @default("open") // open | drafting | completed
+  format      String   @default("snake") // snake | linear
+  currentPick Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -270,13 +271,16 @@ model DraftPick {
 }
 
 model WaiverClaim {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   teamId       String
   playerId     String
   dropPlayerId String?
-  priority     Int
-  status       String   @default("pending") // pending | successful | failed
-  createdAt    DateTime @default(now())
+  priority     Int       @default(0)
+  bidAmount    Int       @default(0)
+  reason       String?
+  status       String    @default("pending") // pending | successful | failed
+  createdAt    DateTime  @default(now())
+  processedAt  DateTime?
 
   team         Team    @relation(fields: [teamId], references: [id])
   playerToAdd  Player  @relation("PlayerToAdd", fields: [playerId], references: [id])

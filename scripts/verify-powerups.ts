@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { execSync } from "child_process";
+import { resolve } from "path";
 
 // REPLICATED SCORING LOGIC
 function computeEffectiveScore(
@@ -79,22 +79,20 @@ async function main() {
             console.log("⏭️ Skipping seed...");
         }
 
-        // 2. Init Prisma (Adapter) - AFTER seed child process is finished
-        const url = process.env.DATABASE_URL;
-        if (!url || url.trim() === "") {
-            throw new Error("DATABASE_URL is missing or empty. Ensure .env exists.");
-        }
-        const adapter = new PrismaBetterSqlite3({ url });
-        prisma = new PrismaClient({ adapter });
+        // 2. Init Prisma - AFTER seed child process is finished
+        const url = `file:${resolve(process.cwd(), "prisma/dev.db")}`;
+        prisma = new PrismaClient({
+            datasources: { db: { url } }
+        });
 
         console.log("\n🔍 Verifying Stat-Based Scoring Logic...");
 
         // 3. Context setup
-        const teamA = await prisma.team.findFirstOrThrow({ where: { name: "Team A" } });
+        const teamA = await prisma.team.findFirstOrThrow({ where: { name: "The DevGods" } });
         const week1 = await prisma.week.findFirstOrThrow({ where: { number: 1 } });
 
         // CLEANUP (Idempotency)
-        console.log("   [cleanup] Resetting state for Team A / Week 1...");
+        console.log("   [cleanup] Resetting state for The DevGods / Week 1...");
         await prisma.teamPowerup.deleteMany({ where: { teamId: teamA.id, weekId: week1.id } });
         await prisma.teamPowerupOffer.deleteMany({ where: { teamId: teamA.id, weekId: week1.id } });
         await prisma.teamWeekStats.deleteMany({ where: { teamId: teamA.id, weekId: week1.id } });

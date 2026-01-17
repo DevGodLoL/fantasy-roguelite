@@ -248,7 +248,8 @@ export async function pickPlayer(
     }
 
     // Auto-continue: Run AI picks until it's the user's turn again
-    for (let i = 0; i < 10; i++) {  // Max 10 AI picks (full round)
+    // In a 10-team snake draft, worst case is 19 picks (9 to end round + 10 back)
+    for (let i = 0; i < 20; i++) {
         const aiResult = await runSingleAIPick(leagueId, draftId);
         if (!aiResult.success || aiResult.isUserTurn || aiResult.draftComplete) {
             break;
@@ -321,16 +322,33 @@ async function runSingleAIPick(leagueId: string, draftId: string): Promise<{
 
 /**
  * Public auto-draft function (for manual button if needed)
+ * Loops through all AI picks until it's the user's turn
  */
 export async function autoDraft(leagueId: string, draftId: string) {
-    const result = await runSingleAIPick(leagueId, draftId);
+    // Run up to 20 AI picks (handles 2 rounds max in case user is in corner)
+    for (let i = 0; i < 20; i++) {
+        const result = await runSingleAIPick(leagueId, draftId);
 
-    if (result.isUserTurn) {
-        return { success: false, message: "It's your turn!", isUserTurn: true };
+        // If it's the user's turn, stop and return
+        if (result.isUserTurn) {
+            revalidatePath(`/league/${leagueId}/draft`);
+            return { success: true, message: "It's your turn!", isUserTurn: true };
+        }
+
+        // If draft is complete, stop
+        if (result.draftComplete) {
+            revalidatePath(`/league/${leagueId}/draft`);
+            return { success: true, draftComplete: true };
+        }
+
+        // If the pick failed for another reason (no players, invalid state), stop
+        if (!result.success) {
+            break;
+        }
     }
 
     revalidatePath(`/league/${leagueId}/draft`);
-    return result;
+    return { success: true };
 }
 
 /**
@@ -385,9 +403,10 @@ export async function startDraft(draftId: string, leagueId: string) {
     });
 
     // After starting, auto-run AI picks until it's user's turn
+    // In a 10-team snake draft, worst case is 19 picks if user is last
     const draft = await db.draft.findUnique({ where: { id: draftId } });
     if (draft) {
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 20; i++) {
             const result = await runSingleAIPick(leagueId, draftId);
             if (!result.success || result.isUserTurn || result.draftComplete) {
                 break;

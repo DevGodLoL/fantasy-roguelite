@@ -2,7 +2,7 @@ import { db } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { pickPlayer, startDraft, autoDraft } from "./actions";
-import { revalidatePath } from "next/cache";
+import DraftPlayerList from "./DraftPlayerList";
 
 // The user's team name
 const USER_TEAM_NAME = "The DevGods";
@@ -148,11 +148,7 @@ export default async function DraftRoom({
                     {draft.status === 'drafting' && !isUserTurn && (
                         <form action={async () => {
                             "use server";
-                            for (let i = 0; i < numTeams; i++) {
-                                const result = await autoDraft(leagueId, draft.id);
-                                if (!result.success || result.isUserTurn) break;
-                            }
-                            revalidatePath(`/league/${leagueId}/draft`);
+                            await autoDraft(leagueId, draft.id);
                         }}>
                             <button className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-full transition-all animate-pulse">
                                 ⚡ Simulate AI Picks
@@ -197,40 +193,14 @@ export default async function DraftRoom({
 
             <div className="flex-1 flex overflow-hidden">
                 {/* Left: Available Players */}
-                <aside className="w-[280px] border-r border-white/5 flex flex-col bg-zinc-950/30 shrink-0">
-                    <div className="p-3 border-b border-white/5">
-                        <input
-                            type="text"
-                            placeholder="Search players..."
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500/50 transition-colors"
-                        />
-                    </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
-                        {availablePlayers.map((player) => (
-                            <div
-                                key={player.id}
-                                className="group flex items-center justify-between px-3 py-2 hover:bg-white/5 transition-colors border-b border-white/[0.02]"
-                            >
-                                <div className="min-w-0">
-                                    <div className="font-bold text-xs truncate">{player.name}</div>
-                                    <div className="text-[9px] text-zinc-500 font-mono">
-                                        <span className={posColors[player.position]?.split(' ')[0] || 'text-zinc-400'}>{player.position}</span> · {player.teamAbbr}
-                                    </div>
-                                </div>
-                                {draft.status === 'drafting' && isUserTurn && userTeam && (
-                                    <form action={async () => {
-                                        "use server";
-                                        await pickPlayer(leagueId, draft.id, userTeam.id, player.id);
-                                    }}>
-                                        <button className="opacity-0 group-hover:opacity-100 px-2 py-1 bg-emerald-500 text-white text-[9px] font-bold uppercase rounded transition-all">
-                                            Draft
-                                        </button>
-                                    </form>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </aside>
+                <DraftPlayerList
+                    players={availablePlayers}
+                    canDraft={draft.status === 'drafting' && isUserTurn && !!userTeam}
+                    leagueId={leagueId}
+                    draftId={draft.id}
+                    teamId={userTeam?.id || ''}
+                    pickPlayerAction={pickPlayer}
+                />
 
                 {/* Center: Draft Board Grid */}
                 <main className="flex-1 overflow-auto p-4">
