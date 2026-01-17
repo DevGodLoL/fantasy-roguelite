@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function addPlayerToRoster(
@@ -10,7 +10,7 @@ export async function addPlayerToRoster(
     playerId: string
 ) {
     // 1. Check if player is already on another team in this league
-    const existingAssignment = await prisma.rosterSlot.findFirst({
+    const existingAssignment = await db.rosterSlot.findFirst({
         where: {
             playerId,
             team: { leagueId },
@@ -22,7 +22,7 @@ export async function addPlayerToRoster(
     }
 
     // 2. Assign player to the specific slot
-    await prisma.rosterSlot.update({
+    await db.rosterSlot.update({
         where: { id: slotId },
         data: { playerId },
     });
@@ -35,7 +35,7 @@ export async function dropPlayer(
     teamId: string,
     slotId: string
 ) {
-    await prisma.rosterSlot.update({
+    await db.rosterSlot.update({
         where: { id: slotId },
         data: { playerId: null },
     });

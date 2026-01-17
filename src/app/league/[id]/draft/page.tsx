@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { pickPlayer, startDraft, autoDraft } from "./actions";
@@ -40,7 +40,7 @@ export default async function DraftRoom({
 }) {
     const { id: leagueId } = await params;
 
-    const league = await prisma.league.findUnique({
+    const league = await db.league.findUnique({
         where: { id: leagueId },
         include: {
             teams: { orderBy: { createdAt: "asc" } },
@@ -107,14 +107,14 @@ export default async function DraftRoom({
     }
 
     // Get drafted player IDs
-    const draftedPlayerIds = await prisma.rosterSlot
+    const draftedPlayerIds = await db.rosterSlot
         .findMany({
             where: { team: { leagueId }, playerId: { not: null } },
             select: { playerId: true },
         })
         .then((slots) => slots.map((s) => s.playerId) as string[]);
 
-    const availablePlayers = await prisma.player.findMany({
+    const availablePlayers = await db.player.findMany({
         where: { id: { notIn: draftedPlayerIds } },
         orderBy: { name: "asc" },
     });
@@ -171,10 +171,10 @@ export default async function DraftRoom({
                     )}
                     {draft.status === 'completed' && (
                         <Link
-                            href={`/league/${leagueId}/waivers`}
+                            href={`/league/${leagueId}/schedule`}
                             className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-full transition-all"
                         >
-                            Go to Waivers →
+                            View Schedule →
                         </Link>
                     )}
                     <div className={`px-3 py-1 rounded-full text-xs font-bold ${draft.status === 'drafting'
@@ -406,8 +406,8 @@ export default async function DraftRoom({
                                                 <div
                                                     key={`${slot.type}-${idx}`}
                                                     className={`p-2 rounded-lg text-xs ${fs.pick
-                                                            ? posColors[fs.pick.player?.position || ''] || 'bg-zinc-800/50'
-                                                            : 'bg-zinc-900/50 border border-dashed border-white/10'
+                                                        ? posColors[fs.pick.player?.position || ''] || 'bg-zinc-800/50'
+                                                        : 'bg-zinc-900/50 border border-dashed border-white/10'
                                                         }`}
                                                 >
                                                     {fs.pick ? (
@@ -439,8 +439,8 @@ export default async function DraftRoom({
                                                 <div
                                                     key={`bench-${idx}`}
                                                     className={`p-2 rounded-lg text-xs ${benchPick
-                                                            ? posColors[benchPick.player?.position || ''] || 'bg-zinc-800/50'
-                                                            : 'bg-zinc-900/30 border border-dashed border-white/5'
+                                                        ? posColors[benchPick.player?.position || ''] || 'bg-zinc-800/50'
+                                                        : 'bg-zinc-900/30 border border-dashed border-white/5'
                                                         }`}
                                                 >
                                                     {benchPick ? (

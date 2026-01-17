@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { generateSchedule } from "./actions";
@@ -11,7 +11,7 @@ export default async function SchedulePage({
 }) {
     const { id: leagueId } = await params;
 
-    const league = await prisma.league.findUnique({
+    const league = await db.league.findUnique({
         where: { id: leagueId },
         include: {
             teams: { orderBy: { createdAt: "asc" } },

@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 // Rarity weights (cumulative)
@@ -23,7 +23,7 @@ export async function ensurePackOffers(leagueId: string, teamId: string, weekId:
     if (!leagueId || !teamId || !weekId) return;
 
     // 1. Check if offers already exist
-    const existingOffers = await prisma.teamPowerupOffer.findMany({
+    const existingOffers = await db.teamPowerupOffer.findMany({
         where: { teamId, weekId },
         include: { powerup: true },
     });
@@ -33,7 +33,7 @@ export async function ensurePackOffers(leagueId: string, teamId: string, weekId:
     }
 
     // 2. Fetch all powerups
-    const allPowerups = await prisma.powerup.findMany();
+    const allPowerups = await db.powerup.findMany();
 
     // 3. Select 4 distinct powerups
     const selected: typeof allPowerups = [];
@@ -72,7 +72,7 @@ export async function ensurePackOffers(leagueId: string, teamId: string, weekId:
 
     // 4. Create offers
     if (selected.length > 0) {
-        await prisma.teamPowerupOffer.createMany({
+        await db.teamPowerupOffer.createMany({
             data: selected.map((p) => ({
                 teamId,
                 weekId,
@@ -82,8 +82,8 @@ export async function ensurePackOffers(leagueId: string, teamId: string, weekId:
         });
     }
 
-    revalidatePath(`/league/${leagueId}/week/${(await prisma.week.findUnique({ where: { id: weekId } }))?.number}`);
-    return await prisma.teamPowerupOffer.findMany({
+    revalidatePath(`/league/${leagueId}/week/${(await db.week.findUnique({ where: { id: weekId } }))?.number}`);
+    return await db.teamPowerupOffer.findMany({
         where: { teamId, weekId },
         include: { powerup: true },
     });
@@ -101,7 +101,7 @@ export async function selectPowerup(formData: FormData) {
     }
 
     // NEW: Check if this powerup is actually offered to this team for this week
-    const offer = await prisma.teamPowerupOffer.findFirst({
+    const offer = await db.teamPowerupOffer.findFirst({
         where: {
             teamId,
             weekId,
@@ -114,7 +114,7 @@ export async function selectPowerup(formData: FormData) {
     }
 
     // Check if team already has a powerup for this week
-    const existing = await prisma.teamPowerup.findFirst({
+    const existing = await db.teamPowerup.findFirst({
         where: { teamId, weekId },
     });
 
@@ -123,8 +123,8 @@ export async function selectPowerup(formData: FormData) {
     }
 
     // Transaction: Create TeamPowerup and mark offer as chosen
-    await prisma.$transaction([
-        prisma.teamPowerup.create({
+    await db.$transaction([
+        db.teamPowerup.create({
             data: {
                 teamId,
                 powerupId,
@@ -132,7 +132,7 @@ export async function selectPowerup(formData: FormData) {
                 isConsumed: false,
             },
         }),
-        prisma.teamPowerupOffer.update({
+        db.teamPowerupOffer.update({
             where: { id: offer.id },
             data: { isChosen: true },
         }),
@@ -152,11 +152,206 @@ export async function consumePowerup(formData: FormData) {
     }
 
     // Mark the powerup as consumed
-    await prisma.teamPowerup.update({
+    await db.teamPowerup.update({
         where: { id: teamPowerupId },
         data: { isConsumed: true },
     });
 
     // Revalidate the week page
     revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
+}
+
+/**
+ * Simulate a week by generating individual player performances and summing them up
+ */
+export async function simulateWeek(leagueId: string, weekNumber: number) {
+    const week = await db.week.findUnique({
+        where: { leagueId_number: { leagueId, number: weekNumber } },
+        include: {
+            matchups: {
+                include: {
+                    homeTeam: {
+                        include: {
+                            rosterSlots: {
+                                where: { slotType: { not: "BENCH" } },
+                                include: { player: true },
+                            },
+                        },
+                    },
+                    awayTeam: {
+                        include: {
+                            rosterSlots: {
+                                where: { slotType: { not: "BENCH" } },
+                                include: { player: true },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!week) {
+        throw new Error("Week not found");
+    }
+
+    // Function to generate random player stats based on position
+    const generateStats = (pos: string) => {
+        let points = 0;
+        let stats = { passYds: 0, rushYds: 0, recYds: 0, tds: 0 };
+
+        switch (pos) {
+            case "QB":
+                stats.passYds = Math.floor(Math.random() * 250 + 150);
+                stats.rushYds = Math.floor(Math.random() * 40);
+                stats.tds = Math.floor(Math.random() * 3);
+                points = (stats.passYds * 0.04) + (stats.rushYds * 0.1) + (stats.tds * 4);
+                break;
+            case "RB":
+                stats.rushYds = Math.floor(Math.random() * 100 + 40);
+                stats.recYds = Math.floor(Math.random() * 30);
+                stats.tds = Math.floor(Math.random() * 2);
+                points = (stats.rushYds * 0.1) + (stats.recYds * 0.1) + (stats.tds * 6);
+                break;
+            case "WR":
+                stats.recYds = Math.floor(Math.random() * 110 + 30);
+                stats.tds = Math.floor(Math.random() * 2);
+                points = (stats.recYds * 0.1) + (stats.tds * 6);
+                break;
+            case "TE":
+                stats.recYds = Math.floor(Math.random() * 70 + 10);
+                stats.tds = Math.random() > 0.7 ? 1 : 0;
+                points = (stats.recYds * 0.1) + (stats.tds * 6);
+                break;
+            default:
+                points = Math.random() * 15 + 5;
+        }
+        return { points: parseFloat(points.toFixed(2)), stats };
+    };
+
+    const transactions = [];
+
+    for (const matchup of week.matchups) {
+        let homeTotal = 0;
+        let awayTotal = 0;
+
+        // Home Team Starters
+        for (const slot of matchup.homeTeam.rosterSlots) {
+            if (slot.player) {
+                const { points, stats } = generateStats(slot.player.position);
+                homeTotal += points;
+                transactions.push(
+                    db.playerPerformance.upsert({
+                        where: {
+                            playerId_weekId: { playerId: slot.player.id, weekId: week.id },
+                        },
+                        create: {
+                            playerId: slot.player.id,
+                            weekId: week.id,
+                            points,
+                            ...stats,
+                        },
+                        update: { points, ...stats },
+                    })
+                );
+            }
+        }
+
+        // Away Team Starters
+        for (const slot of matchup.awayTeam.rosterSlots) {
+            if (slot.player) {
+                const { points, stats } = generateStats(slot.player.position);
+                awayTotal += points;
+                transactions.push(
+                    db.playerPerformance.upsert({
+                        where: {
+                            playerId_weekId: { playerId: slot.player.id, weekId: week.id },
+                        },
+                        create: {
+                            playerId: slot.player.id,
+                            weekId: week.id,
+                            points,
+                            ...stats,
+                        },
+                        update: { points, ...stats },
+                    })
+                );
+            }
+        }
+
+        // Update Matchup Score
+        transactions.push(
+            db.matchup.update({
+                where: { id: matchup.id },
+                data: {
+                    homeScore: parseFloat(homeTotal.toFixed(2)),
+                    awayScore: parseFloat(awayTotal.toFixed(2)),
+                    status: "final",
+                },
+            })
+        );
+    }
+
+    await db.$transaction(transactions);
+
+    revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
+    revalidatePath(`/league/${leagueId}/schedule`);
+
+    return { success: true };
+}
+
+/**
+ * Advance to the next week
+ */
+export async function advanceToNextWeek(leagueId: string, currentWeekNumber: number) {
+    const nextWeek = await db.week.findUnique({
+        where: { leagueId_number: { leagueId, number: currentWeekNumber + 1 } },
+    });
+
+    if (!nextWeek) {
+        throw new Error("No more weeks in the season");
+    }
+
+    revalidatePath(`/league/${leagueId}/week/${currentWeekNumber + 1}`);
+    return { success: true, nextWeekNumber: currentWeekNumber + 1 };
+}
+
+/**
+ * Swap players between two roster slots
+ */
+export async function swapLineupSlots(
+    leagueId: string,
+    weekNumber: number,
+    fromSlotId: string,
+    toSlotId: string
+) {
+    // Basic verification: simplify for now by just swapping playerIds
+    const [fromSlot, toSlot] = await Promise.all([
+        db.rosterSlot.findUnique({ where: { id: fromSlotId } }),
+        db.rosterSlot.findUnique({ where: { id: toSlotId } }),
+    ]);
+
+    if (!fromSlot || !toSlot) {
+        throw new Error("One or both slots not found");
+    }
+
+    // Ensure they belong to the same team
+    if (fromSlot.teamId !== toSlot.teamId) {
+        throw new Error("Cannot swap players between different teams");
+    }
+
+    // Perform the swap
+    await db.$transaction([
+        db.rosterSlot.update({
+            where: { id: fromSlotId },
+            data: { playerId: toSlot.playerId },
+        }),
+        db.rosterSlot.update({
+            where: { id: toSlotId },
+            data: { playerId: fromSlot.playerId },
+        }),
+    ]);
+
+    revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
+    return { success: true };
 }

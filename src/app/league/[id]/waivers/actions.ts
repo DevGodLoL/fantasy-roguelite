@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -14,7 +14,7 @@ export async function submitWaiverClaim(
     bidAmount: number,
     dropPlayerId?: string
 ) {
-    const team = await prisma.team.findUnique({
+    const team = await db.team.findUnique({
         where: { id: teamId },
         select: { faabBalance: true },
     });
@@ -24,13 +24,13 @@ export async function submitWaiverClaim(
     if (bidAmount > team.faabBalance) throw new Error("Insufficient FAAB funds.");
 
     // Check if player is already rostered
-    const isRostered = await prisma.rosterSlot.findFirst({
+    const isRostered = await db.rosterSlot.findFirst({
         where: { playerId, team: { leagueId } },
     });
     if (isRostered) throw new Error("Player is already on a team.");
 
     // Create the claim
-    await prisma.waiverClaim.create({
+    await db.waiverClaim.create({
         data: {
             teamId,
             playerId,
@@ -49,7 +49,7 @@ export async function submitWaiverClaim(
  */
 export async function processWaivers(leagueId: string) {
     // 1. Fetch all pending claims for this league
-    const claims = await prisma.waiverClaim.findMany({
+    const claims = await db.waiverClaim.findMany({
         where: {
             status: "pending",
             team: { leagueId },
@@ -74,7 +74,7 @@ export async function processWaivers(leagueId: string) {
     for (const claim of claims) {
         // If player was already awarded in this run, skip
         if (processedPlayerIds.has(claim.playerId)) {
-            await prisma.waiverClaim.update({
+            await db.waiverClaim.update({
                 where: { id: claim.id },
                 data: { status: "failed", reason: "Player already claimed by higher bid." },
             });
@@ -82,7 +82,7 @@ export async function processWaivers(leagueId: string) {
         }
 
         // Refresh team data (FAAB might have changed during this loop)
-        const currentTeam = await prisma.team.findUnique({
+        const currentTeam = await db.team.findUnique({
             where: { id: claim.teamId },
             include: { rosterSlots: true },
         });
@@ -91,7 +91,7 @@ export async function processWaivers(leagueId: string) {
 
         // Check FAAB again
         if (claim.bidAmount > currentTeam.faabBalance) {
-            await prisma.waiverClaim.update({
+            await db.waiverClaim.update({
                 where: { id: claim.id },
                 data: { status: "failed", reason: "Insufficient FAAB balance." },
             });
@@ -101,11 +101,11 @@ export async function processWaivers(leagueId: string) {
         // Handle Drop-to-Add logic
         let targetSlot;
         if (claim.dropPlayerId) {
-            targetSlot = await prisma.rosterSlot.findFirst({
+            targetSlot = await db.rosterSlot.findFirst({
                 where: { teamId: claim.teamId, playerId: claim.dropPlayerId }
             });
             if (!targetSlot) {
-                await prisma.waiverClaim.update({
+                await db.waiverClaim.update({
                     where: { id: claim.id },
                     data: { status: "failed", reason: "Drop player no longer on roster." }
                 });
@@ -113,13 +113,13 @@ export async function processWaivers(leagueId: string) {
             }
         } else {
             // Find an empty slot
-            targetSlot = await prisma.rosterSlot.findFirst({
+            targetSlot = await db.rosterSlot.findFirst({
                 where: { teamId: claim.teamId, playerId: null, slotType: { in: [claim.playerToAdd.position, "FLEX", "BENCH"] } },
                 orderBy: { isStarter: "desc" }
             });
 
             if (!targetSlot) {
-                await prisma.waiverClaim.update({
+                await db.waiverClaim.update({
                     where: { id: claim.id },
                     data: { status: "failed", reason: "No roster space available. Use drop-to-add." }
                 });
@@ -129,7 +129,7 @@ export async function processWaivers(leagueId: string) {
 
         // Execute the claim
         try {
-            await prisma.$transaction(async (tx) => {
+            await db.$transaction(async (tx) => {
                 // Deduct FAAB
                 await tx.team.update({
                     where: { id: claim.teamId },
@@ -174,6 +174,6 @@ export async function processWaivers(leagueId: string) {
 }
 
 export async function cancelClaim(claimId: string, leagueId: string) {
-    await prisma.waiverClaim.delete({ where: { id: claimId } });
+    await db.waiverClaim.delete({ where: { id: claimId } });
     revalidatePath(`/league/${leagueId}/waivers`);
 }

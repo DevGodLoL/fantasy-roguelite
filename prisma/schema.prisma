@@ -3,10 +3,12 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
 }
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 /// --- MODELS START HERE ---
@@ -18,31 +20,32 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  teams   Team[]
-  leagues LeagueMember[]
+  leagues       LeagueMember[]
+  ownedLeagues  League[]
+  teams         Team[]
 }
 
 model League {
   id        String   @id @default(cuid())
   name      String
+  ownerId   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  owner    User            @relation(fields: [ownerId], references: [id])
   members  LeagueMember[]
   teams    Team[]
-  weeks    Week[]
   settings LeagueSettings?
+  weeks    Week[]
+  drafts   Draft[]
   matchups Matchup[]
-  draft    Draft?
-
-  @@unique([name])
 }
 
 model LeagueMember {
   id       String @id @default(cuid())
   leagueId String
   userId   String
-  role     String @default("owner") // owner | member
+  role     String @default("member") // owner | member
 
   league League @relation(fields: [leagueId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
@@ -59,29 +62,22 @@ model LeagueSettings {
   rosterRB   Int @default(2)
   rosterWR   Int @default(2)
   rosterTE   Int @default(1)
-  rosterFLEX Int @default(1) // RB/WR/TE
-  rosterDST  Int @default(1)
+  rosterFlex Int @default(1)
   rosterK    Int @default(1)
-  bench      Int @default(6)
-  initialFaab Int @default(100)
+  rosterDST  Int @default(1)
+  rosterBench Int @default(5)
 
-  // scoring preset (PPR v1)
-  passingYardsPerPoint Float @default(25) // 1 pt per 25 pass yds
-  passingTdPoints      Int   @default(4)
-  interceptionPoints   Int   @default(-2)
-
-  rushingYardsPerPoint Float @default(10) // 1 pt per 10 rush yds
-  rushingTdPoints      Int   @default(6)
-
-  receivingYardsPerPoint Float @default(10) // 1 pt per 10 rec yds
+  // Scoring
+  passTdPoints           Int   @default(4)
+  passYardPoints         Float @default(0.04)
+  rushTdPoints           Int   @default(6)
+  rushYardPoints         Float @default(0.1)
   receivingTdPoints      Int   @default(6)
   receptionPoints        Float @default(1) // PPR
-
-  fumbleLostPoints Int @default(-2)
+  fumbleLostPoints       Int   @default(-2)
 
   league League @relation(fields: [leagueId], references: [id])
 }
-
 
 model Team {
   id        String   @id @default(cuid())
@@ -119,6 +115,7 @@ model Week {
   powerups       TeamPowerup[]
   powerupOffers  TeamPowerupOffer[]
   teamStats      TeamWeekStats[]
+  performances   PlayerPerformance[]
 
   @@unique([leagueId, number])
 }
@@ -136,7 +133,6 @@ model TeamWeekStats {
 
   @@unique([teamId, weekId])
 }
-
 
 model Matchup {
   id       String @id @default(cuid())
@@ -161,15 +157,33 @@ model Matchup {
 
 model Player {
   id          String  @id @default(cuid())
-  nflPlayerId String  @unique // later map to real NFL IDs
+  nflPlayerId String  @unique
   name        String
   position    String // QB/RB/WR/TE/DST/K
   teamAbbr    String?
 
-  rosterSlots RosterSlot[]
-  draftPicks  DraftPick[]
+  rosterSlots  RosterSlot[]
+  draftPicks   DraftPick[]
   waiverClaims WaiverClaim[] @relation("PlayerToAdd")
   dropClaims   WaiverClaim[] @relation("PlayerToDrop")
+  performances PlayerPerformance[]
+}
+
+model PlayerPerformance {
+  id       String @id @default(cuid())
+  playerId String
+  weekId   String
+  points   Float  @default(0)
+
+  passYds Int @default(0)
+  rushYds Int @default(0)
+  recYds  Int @default(0)
+  tds     Int @default(0)
+
+  player Player @relation(fields: [playerId], references: [id])
+  week   Week   @relation(fields: [weekId], references: [id])
+
+  @@unique([playerId, weekId])
 }
 
 model RosterSlot {
@@ -190,7 +204,7 @@ model Powerup {
   code        String  @unique // e.g., QB_PASS_YARDS_X15
   name        String
   description String
-  rarity      String  @default("common") // common/rare/epic/legendary
+  rarity      String  @default("common") // common, rare, epic, legendary
   scope       String  @default("self") // self/opponent
   duration    String  @default("week") // week/season
   kind        String?
@@ -211,33 +225,30 @@ model TeamPowerup {
   powerup Powerup @relation(fields: [powerupId], references: [id])
   week    Week?   @relation(fields: [weekId], references: [id])
 
-  @@index([teamId, isConsumed])
+  @@unique([teamId, weekId])
 }
 
 model TeamPowerupOffer {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   teamId    String
-  weekId    String
   powerupId String
-  createdAt DateTime @default(now())
-  isChosen  Boolean  @default(false)
+  weekId    String
+  isChosen  Boolean @default(false)
 
   team    Team    @relation(fields: [teamId], references: [id])
-  week    Week    @relation(fields: [weekId], references: [id])
   powerup Powerup @relation(fields: [powerupId], references: [id])
+  week    Week    @relation(fields: [weekId], references: [id])
 
   @@unique([teamId, weekId, powerupId])
-  @@index([teamId, weekId])
 }
 
 model Draft {
-  id          String   @id @default(cuid())
-  leagueId    String   @unique
-  status      String   @default("pre_draft") // pre_draft | drafting | completed
-  currentPick Int      @default(1)
-  format      String   @default("snake") // snake | linear
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id       String   @id @default(cuid())
+  leagueId String   @unique
+  status   String   @default("open") // open | running | completed
+  format   String   @default("snake") // snake | linear
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   league League      @relation(fields: [leagueId], references: [id])
   picks  DraftPick[]
@@ -256,19 +267,16 @@ model DraftPick {
   player Player? @relation(fields: [playerId], references: [id])
 
   @@unique([draftId, pickNumber])
-  @@index([teamId])
 }
 
 model WaiverClaim {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   teamId       String
-  playerId     String    // Player to add
-  dropPlayerId String?   // Player to drop
-  bidAmount    Int       @default(0)
-  createdAt    DateTime  @default(now())
-  processedAt  DateTime?
-  status       String    @default("pending") // pending | successful | failed
-  reason       String?
+  playerId     String
+  dropPlayerId String?
+  priority     Int
+  status       String   @default("pending") // pending | successful | failed
+  createdAt    DateTime @default(now())
 
   team         Team    @relation(fields: [teamId], references: [id])
   playerToAdd  Player  @relation("PlayerToAdd", fields: [playerId], references: [id])

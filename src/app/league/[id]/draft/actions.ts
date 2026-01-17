@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 // The user's team name - this is the only team the human controls
@@ -13,7 +13,7 @@ const USER_TEAM_NAME = "The DevGods";
  */
 async function getBestAvailablePlayer(leagueId: string, teamId: string) {
     // Get already-drafted player IDs in this league
-    const draftedPlayerIds = await prisma.rosterSlot
+    const draftedPlayerIds = await db.rosterSlot
         .findMany({
             where: { team: { leagueId }, playerId: { not: null } },
             select: { playerId: true },
@@ -21,7 +21,7 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
         .then((slots) => slots.map((s) => s.playerId) as string[]);
 
     // Get team's current roster to determine needs
-    const teamSlots = await prisma.rosterSlot.findMany({
+    const teamSlots = await db.rosterSlot.findMany({
         where: { teamId },
         include: { player: true },
     });
@@ -57,7 +57,7 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
     // Find available players
     let availablePlayers;
     if (targetPosition && targetPosition !== "FLEX") {
-        availablePlayers = await prisma.player.findMany({
+        availablePlayers = await db.player.findMany({
             where: {
                 id: { notIn: draftedPlayerIds },
                 position: targetPosition,
@@ -67,7 +67,7 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
         });
     } else if (targetPosition === "FLEX") {
         // FLEX can be RB, WR, or TE
-        availablePlayers = await prisma.player.findMany({
+        availablePlayers = await db.player.findMany({
             where: {
                 id: { notIn: draftedPlayerIds },
                 position: { in: ["RB", "WR", "TE"] },
@@ -77,7 +77,7 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
         });
     } else {
         // Just get any available player
-        availablePlayers = await prisma.player.findMany({
+        availablePlayers = await db.player.findMany({
             where: { id: { notIn: draftedPlayerIds } },
             orderBy: { name: "asc" },
             take: 10,
@@ -91,7 +91,7 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
     }
 
     // Fallback: if no players found for target position, get any available player
-    const anyPlayer = await prisma.player.findMany({
+    const anyPlayer = await db.player.findMany({
         where: { id: { notIn: draftedPlayerIds } },
         orderBy: { name: "asc" },
         take: 5,
@@ -115,7 +115,7 @@ async function executePickInternal(
     playerId: string
 ): Promise<{ success: boolean; draftComplete?: boolean }> {
     // 1. Get the draft state
-    const draft = await prisma.draft.findUnique({
+    const draft = await db.draft.findUnique({
         where: { id: draftId },
         include: { picks: true },
     });
@@ -125,7 +125,7 @@ async function executePickInternal(
     }
 
     // 2. Identify whose turn it is
-    const teamsInLeague = await prisma.team.findMany({
+    const teamsInLeague = await db.team.findMany({
         where: { leagueId },
         orderBy: { createdAt: "asc" },
     });
@@ -153,7 +153,7 @@ async function executePickInternal(
     }
 
     // 3. Verify player availability
-    const isTaken = await prisma.rosterSlot.findFirst({
+    const isTaken = await db.rosterSlot.findFirst({
         where: {
             playerId,
             team: { leagueId },
@@ -165,24 +165,24 @@ async function executePickInternal(
     }
 
     // 4. Find an open slot for this player
-    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    const player = await db.player.findUnique({ where: { id: playerId } });
     if (!player) return { success: false };
 
     // Slot priority logic
     let targetSlot;
     if (player.position === "QB" || player.position === "K" || player.position === "DST") {
-        targetSlot = await prisma.rosterSlot.findFirst({
+        targetSlot = await db.rosterSlot.findFirst({
             where: { teamId, playerId: null, slotType: player.position }
-        }) || await prisma.rosterSlot.findFirst({
+        }) || await db.rosterSlot.findFirst({
             where: { teamId, playerId: null, slotType: "BENCH" }
         });
     } else {
         // RB, WR, TE can go to their slot, FLEX, or BENCH
-        targetSlot = await prisma.rosterSlot.findFirst({
+        targetSlot = await db.rosterSlot.findFirst({
             where: { teamId, playerId: null, slotType: player.position }
-        }) || await prisma.rosterSlot.findFirst({
+        }) || await db.rosterSlot.findFirst({
             where: { teamId, playerId: null, slotType: "FLEX" }
-        }) || await prisma.rosterSlot.findFirst({
+        }) || await db.rosterSlot.findFirst({
             where: { teamId, playerId: null, slotType: "BENCH" }
         });
     }
@@ -192,8 +192,8 @@ async function executePickInternal(
     }
 
     // 5. Execute the pick
-    await prisma.$transaction([
-        prisma.draftPick.create({
+    await db.$transaction([
+        db.draftPick.create({
             data: {
                 draftId,
                 teamId,
@@ -202,11 +202,11 @@ async function executePickInternal(
                 round,
             },
         }),
-        prisma.rosterSlot.update({
+        db.rosterSlot.update({
             where: { id: targetSlot.id },
             data: { playerId },
         }),
-        prisma.draft.update({
+        db.draft.update({
             where: { id: draftId },
             data: { currentPick: draft.currentPick + 1 },
         }),
@@ -215,7 +215,7 @@ async function executePickInternal(
     // 6. Check if draft is finished (15 rounds for 10 teams = 150 picks)
     const totalSlotsPerTeam = 15;
     if (draft.currentPick >= numTeams * totalSlotsPerTeam) {
-        await prisma.draft.update({
+        await db.draft.update({
             where: { id: draftId },
             data: { status: "completed" }
         });
@@ -267,7 +267,7 @@ async function runSingleAIPick(leagueId: string, draftId: string): Promise<{
     isUserTurn?: boolean;
     draftComplete?: boolean;
 }> {
-    const draft = await prisma.draft.findUnique({
+    const draft = await db.draft.findUnique({
         where: { id: draftId },
     });
 
@@ -275,7 +275,7 @@ async function runSingleAIPick(leagueId: string, draftId: string): Promise<{
         return { success: false };
     }
 
-    const teamsInLeague = await prisma.team.findMany({
+    const teamsInLeague = await db.team.findMany({
         where: { leagueId },
         orderBy: { createdAt: "asc" },
     });
@@ -337,13 +337,13 @@ export async function autoDraft(leagueId: string, draftId: string) {
  * Returns info about whose turn it is
  */
 export async function getDraftTurnInfo(leagueId: string, draftId: string) {
-    const draft = await prisma.draft.findUnique({
+    const draft = await db.draft.findUnique({
         where: { id: draftId },
     });
 
     if (!draft) return null;
 
-    const teamsInLeague = await prisma.team.findMany({
+    const teamsInLeague = await db.team.findMany({
         where: { leagueId },
         orderBy: { createdAt: "asc" },
     });
@@ -379,13 +379,13 @@ export async function getDraftTurnInfo(leagueId: string, draftId: string) {
 }
 
 export async function startDraft(draftId: string, leagueId: string) {
-    await prisma.draft.update({
+    await db.draft.update({
         where: { id: draftId },
         data: { status: "drafting" }
     });
 
     // After starting, auto-run AI picks until it's user's turn
-    const draft = await prisma.draft.findUnique({ where: { id: draftId } });
+    const draft = await db.draft.findUnique({ where: { id: draftId } });
     if (draft) {
         for (let i = 0; i < 10; i++) {
             const result = await runSingleAIPick(leagueId, draftId);

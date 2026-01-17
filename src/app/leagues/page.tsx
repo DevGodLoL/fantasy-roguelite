@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 
 export default async function LeaguesPage() {
-  const leagues = await prisma.league.findMany({
+  const leagues = await db.league.findMany({
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });

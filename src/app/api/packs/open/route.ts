@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 
 function sample<T>(arr: T[], n: number) {
   const copy = [...arr];
@@ -9,23 +9,23 @@ function sample<T>(arr: T[], n: number) {
 
 export async function POST() {
   // For now: "current team" = Team A in Demo League, week = 1
-  const league = await prisma.league.findFirst({ where: { name: "Demo League" } });
+  const league = await db.league.findFirst({ where: { name: "Demo League" } });
   if (!league) return NextResponse.json({ error: "Demo League not found" }, { status: 404 });
 
-  const team = await prisma.team.findFirst({
+  const team = await db.team.findFirst({
     where: { leagueId: league.id, name: "Team A" },
   });
   if (!team) return NextResponse.json({ error: "Team A not found" }, { status: 404 });
 
-  const week = await prisma.week.findFirst({
+  const week = await db.week.findFirst({
     where: { leagueId: league.id, number: 1 },
   });
   if (!week) return NextResponse.json({ error: "Week 1 not found" }, { status: 404 });
 
-  const all = await prisma.powerup.findMany();
+  const all = await db.powerup.findMany();
 
   // Basic rule: don't offer already-consumed powerups for this team/week
-  const already = await prisma.teamPowerup.findMany({
+  const already = await db.teamPowerup.findMany({
     where: { teamId: team.id, weekId: week.id },
     select: { powerupId: true },
   });

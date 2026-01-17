@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { addPlayerToRoster, dropPlayer } from "../actions";
@@ -10,7 +10,7 @@ export default async function TeamPage({
 }) {
     const { id: leagueId, teamId } = await params;
 
-    const team = await prisma.team.findUnique({
+    const team = await db.team.findUnique({
         where: { id: teamId },
         include: {
             owner: true,
@@ -35,14 +35,14 @@ export default async function TeamPage({
     const draftStatus = team.league.draft?.status || "pre_draft";
 
     // Get available players (not currently on any team in this league)
-    const rosteredPlayerIds = await prisma.rosterSlot
+    const rosteredPlayerIds = await db.rosterSlot
         .findMany({
             where: { team: { leagueId }, playerId: { not: null } },
             select: { playerId: true },
         })
         .then((slots) => slots.map((s) => s.playerId) as string[]);
 
-    const availablePlayers = await prisma.player.findMany({
+    const availablePlayers = await db.player.findMany({
         where: { id: { notIn: rosteredPlayerIds } },
         orderBy: { name: "asc" },
     });

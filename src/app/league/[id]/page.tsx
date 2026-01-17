@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -9,7 +9,7 @@ export default async function LeaguePage({
 }) {
   const { id } = await params;
 
-  const league = await prisma.league.findUnique({
+  const league = await db.league.findUnique({
     where: { id },
     include: {
       teams: { include: { owner: true } },

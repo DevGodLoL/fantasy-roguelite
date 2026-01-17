@@ -1,21 +1,11 @@
-import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import Database from "better-sqlite3";
+import { PrismaClient } from "../src/generated/client";
 import { resolve } from "path";
 
-const root = process.cwd();
-const rawUrl = process.env.DATABASE_URL || "file:./dev.db";
-let url = rawUrl;
-let dbPath = "./dev.db";
-
-if (rawUrl.startsWith("file:")) {
-  dbPath = rawUrl.slice(rawUrl.indexOf(":") + 1);
-  url = `file:${resolve(root, dbPath)}`;
-}
-
-const adapter = new PrismaBetterSqlite3({ url });
-const prisma = new PrismaClient({ adapter });
+// Standard client for seeding
+const url = `file:${resolve(process.cwd(), "prisma/dev.db")}`;
+const prisma = new PrismaClient({
+  datasources: { db: { url } }
+});
 
 async function main() {
   console.log("--- SEEDING: THE REAL NFL 2025-2026 ROSTER ---");
@@ -55,6 +45,7 @@ async function main() {
   const league = await prisma.league.create({
     data: {
       name: "NFL Roguelite - Season 1",
+      ownerId: admin.id,
     },
   });
 
@@ -73,11 +64,10 @@ async function main() {
       rosterRB: 2,
       rosterWR: 2,
       rosterTE: 1,
-      rosterFLEX: 1,
+      rosterFlex: 1,
       rosterDST: 1,
       rosterK: 1,
-      bench: 6,
-      initialFaab: 100,
+      rosterBench: 6,
     },
   });
 
@@ -323,7 +313,6 @@ async function main() {
       leagueId: league.id,
       status: "pre_draft",
       format: "snake",
-      currentPick: 1,
     },
   });
 

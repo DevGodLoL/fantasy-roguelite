@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { submitWaiverClaim, processWaivers, cancelClaim } from "./actions";
@@ -10,7 +10,7 @@ export default async function WaiversPage({
 }) {
     const { id: leagueId } = await params;
 
-    const league = await prisma.league.findUnique({
+    const league = await db.league.findUnique({
         where: { id: leagueId },
         include: {
             teams: {
@@ -26,19 +26,19 @@ export default async function WaiversPage({
 
     if (!league) notFound();
 
-    const rosteredPlayerIds = await prisma.rosterSlot
+    const rosteredPlayerIds = await db.rosterSlot
         .findMany({
             where: { team: { leagueId }, playerId: { not: null } },
             select: { playerId: true },
         })
         .then((slots) => slots.map((s) => s.playerId) as string[]);
 
-    const availablePlayers = await prisma.player.findMany({
+    const availablePlayers = await db.player.findMany({
         where: { id: { notIn: rosteredPlayerIds } },
         orderBy: { name: "asc" },
     });
 
-    const pendingClaims = await prisma.waiverClaim.findMany({
+    const pendingClaims = await db.waiverClaim.findMany({
         where: { status: "pending", team: { leagueId } },
         include: { team: true, playerToAdd: true, playerToDrop: true },
         orderBy: { bidAmount: "desc" },

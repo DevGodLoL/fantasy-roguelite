@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -9,18 +9,18 @@ import { revalidatePath } from "next/cache";
  */
 export async function generateSchedule(leagueId: string) {
     // Check if schedule already exists
-    const existingWeeks = await prisma.week.findMany({
+    const existingWeeks = await db.week.findMany({
         where: { leagueId },
     });
 
     if (existingWeeks.length > 0) {
         // Clear existing schedule first
-        await prisma.matchup.deleteMany({ where: { leagueId } });
-        await prisma.week.deleteMany({ where: { leagueId } });
+        await db.matchup.deleteMany({ where: { leagueId } });
+        await db.week.deleteMany({ where: { leagueId } });
     }
 
     // Get all teams in the league
-    const teams = await prisma.team.findMany({
+    const teams = await db.team.findMany({
         where: { leagueId },
         orderBy: { createdAt: "asc" },
     });
@@ -35,7 +35,7 @@ export async function generateSchedule(leagueId: string) {
     // Create weeks
     const weeks = [];
     for (let w = 1; w <= numWeeks; w++) {
-        const week = await prisma.week.create({
+        const week = await db.week.create({
             data: {
                 leagueId,
                 number: w,
@@ -95,7 +95,7 @@ export async function generateSchedule(leagueId: string) {
         const roundMatchups = allRounds[roundIndex];
 
         for (const { home, away } of roundMatchups) {
-            await prisma.matchup.create({
+            await db.matchup.create({
                 data: {
                     leagueId,
                     weekId: week.id,
@@ -118,7 +118,7 @@ export async function generateSchedule(leagueId: string) {
  */
 export async function getCurrentWeek(leagueId: string) {
     // Find the first week with scheduled matchups (not all final)
-    const week = await prisma.week.findFirst({
+    const week = await db.week.findFirst({
         where: {
             leagueId,
             matchups: {

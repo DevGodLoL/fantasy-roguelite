@@ -1,40 +1,11 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import Link from "next/link";
-import { consumePowerup, selectPowerup, ensurePackOffers } from "./actions";
+import { notFound } from "next/navigation";
+import { simulateWeek, advanceToNextWeek } from "./actions";
+import { revalidatePath } from "next/cache";
+import LineupManager from "./LineupManager";
 
-// NEW: Helper for stat-based score calculation
-// Returns granular breakdown for debugging/UI
-function calculateScore(
-    stats: { passYds: number; rushYds: number; recYds: number } | null,
-    powerup: { code: string; value: number | null } | null
-) {
-    if (!stats) return { base: 0, effective: 0 };
-
-    const base = stats.passYds + stats.rushYds + stats.recYds;
-
-    if (!powerup) {
-        return { base, effective: base };
-    }
-
-    let effPass = stats.passYds;
-    let effRush = stats.rushYds;
-    let effRec = stats.recYds;
-    let bonus = 0;
-
-    // Apply Multipliers
-    if (powerup.code === "PASS_YDS_X15") {
-        effPass = stats.passYds * (powerup.value ?? 1.5);
-    } else if (powerup.code === "RUSH_YDS_X15") {
-        effRush = stats.rushYds * (powerup.value ?? 1.5);
-    } else if (powerup.code === "REC_YDS_X15") {
-        effRec = stats.recYds * (powerup.value ?? 1.5);
-    } else if (powerup.code === "PLUS_10") {
-        bonus = 10;
-    }
-
-    const effective = effPass + effRush + effRec + bonus;
-    return { base, effective };
-}
+const USER_TEAM_NAME = "The DevGods";
 
 export default async function WeekPage({
     params,
@@ -42,298 +13,254 @@ export default async function WeekPage({
     params: Promise<{ id: string; weekNumber: string }>;
 }) {
     const { id: leagueId, weekNumber } = await params;
-    const numWeek = parseInt(weekNumber, 10);
+    const weekNum = parseInt(weekNumber, 10);
 
-    const league = await prisma.league.findUniqueOrThrow({
+    const league = await db.league.findUnique({
         where: { id: leagueId },
     });
 
-    const week = await prisma.week.findUniqueOrThrow({
-        where: { leagueId_number: { leagueId, number: numWeek } },
-    });
+    if (!league) {
+        notFound();
+    }
 
-    const matchups = await prisma.matchup.findMany({
-        where: { weekId: week.id },
+    const week = await db.week.findUnique({
+        where: { leagueId_number: { leagueId, number: weekNum } },
         include: {
-            homeTeam: true,
-            awayTeam: true,
+            matchups: {
+                include: {
+                    homeTeam: {
+                        include: {
+                            rosterSlots: {
+                                include: {
+                                    player: {
+                                        include: {
+                                            performances: true,
+                                        },
+                                    },
+                                },
+                                orderBy: { slotType: "asc" },
+                            },
+                        },
+                    },
+                    awayTeam: {
+                        include: {
+                            rosterSlots: {
+                                include: {
+                                    player: {
+                                        include: {
+                                            performances: true,
+                                        },
+                                    },
+                                },
+                                orderBy: { slotType: "asc" },
+                            },
+                        },
+                    },
+                },
+            },
         },
     });
 
-    const teams = await prisma.team.findMany({
+    if (!week) {
+        notFound();
+    }
+
+    // Find user's matchup
+    const userMatchup = week.matchups.find(
+        (m) =>
+            m.homeTeam.name === USER_TEAM_NAME ||
+            m.awayTeam.name === USER_TEAM_NAME
+    );
+
+    const isUserHome = userMatchup?.homeTeam.name === USER_TEAM_NAME;
+    const userTeam = isUserHome ? userMatchup?.homeTeam : userMatchup?.awayTeam;
+    const oppTeam = isUserHome ? userMatchup?.awayTeam : userMatchup?.homeTeam;
+    const userScore = isUserHome ? userMatchup?.homeScore : userMatchup?.awayScore;
+    const oppScore = isUserHome ? userMatchup?.awayScore : userMatchup?.homeScore;
+
+    // Get all weeks to show navigation
+    const allWeeks = await db.week.findMany({
         where: { leagueId },
-        orderBy: { name: "asc" },
+        orderBy: { number: "asc" },
+        include: {
+            matchups: {
+                where: {
+                    OR: [
+                        { homeTeam: { id: userTeam?.id } },
+                        { awayTeam: { id: userTeam?.id } },
+                    ],
+                },
+            },
+        },
     });
 
-    const teamPowerups = await prisma.teamPowerup.findMany({
-        where: { weekId: week.id },
-        include: { powerup: true },
-    });
+    // Organize roster into starters and bench
+    const getOrganizedRoster = (
+        slots: {
+            id: string;
+            slotType: string;
+            player: {
+                id: string;
+                name: string;
+                teamAbbr: string | null;
+                position: string;
+                performances: { points: number; weekId: string }[];
+            } | null;
+        }[]
+    ) => {
+        const mappedSlots = slots.map(s => ({
+            ...s,
+            player: s.player ? {
+                ...s.player,
+                points: s.player.performances.find((p) => p.weekId === week.id)?.points
+            } : null
+        }));
 
-    // Fetch Stats
-    const allStats = await prisma.teamWeekStats.findMany({
-        where: { weekId: week.id }
-    });
+        const starters = mappedSlots.filter((s) => s.slotType !== "BENCH");
+        const bench = mappedSlots.filter((s) => s.slotType === "BENCH");
+        return { starters, bench };
+    };
 
-    const teamPowerupOffers = await prisma.teamPowerupOffer.findMany({
-        where: { weekId: week.id },
-        include: { powerup: true },
-    });
+    const userRoster = userTeam ? getOrganizedRoster(userTeam.rosterSlots) : null;
 
-    // Helpers
-    const getTeamPowerup = (teamId: string) => teamPowerups.find((tp) => tp.teamId === teamId);
-    const getTeamOffers = (teamId: string) => teamPowerupOffers.filter((o) => o.teamId === teamId);
-    const getTeamStats = (teamId: string) => allStats.find((s) => s.teamId === teamId) || null;
+    const isLive = userMatchup?.status === "live";
+    const isFinal = userMatchup?.status === "final";
+    const isScheduled = userMatchup?.status === "scheduled";
 
     return (
-        <div className="max-w-4xl mx-auto p-6 space-y-8 font-sans">
-            <div>
-                <Link
-                    href={`/league/${leagueId}`}
-                    className="text-blue-600 hover:underline mb-4 inline-block"
-                >
-                    ← Back to {league.name}
-                </Link>
-                <h1 className="text-3xl font-bold">Week {weekNumber}</h1>
-            </div>
-
-            <section>
-                <h2 className="text-xl font-semibold mb-4">Matchups</h2>
-                <div className="space-y-4">
-                    {matchups.map((m) => {
-                        const homePowerup = getTeamPowerup(m.homeTeamId);
-                        const awayPowerup = getTeamPowerup(m.awayTeamId);
-                        const homeStats = getTeamStats(m.homeTeamId);
-                        const awayStats = getTeamStats(m.awayTeamId);
-
-                        const { base: homeBase, effective: homeEff } = calculateScore(
-                            homeStats,
-                            homePowerup && !homePowerup.isConsumed ? homePowerup.powerup : null
-                        );
-
-                        const { base: awayBase, effective: awayEff } = calculateScore(
-                            awayStats,
-                            awayPowerup && !awayPowerup.isConsumed ? awayPowerup.powerup : null
-                        );
-
-                        return (
-                            <div key={m.id} className="border p-4 rounded bg-gray-50">
-                                <div className="grid grid-cols-2 gap-4 divide-x">
-                                    {/* Home Team */}
-                                    <div className="px-4">
-                                        <div className="flex justify-between items-baseline mb-2">
-                                            <span className="font-bold text-lg">
-                                                {m.homeTeam.name}
-                                            </span>
-                                            <div className="text-right">
-                                                <span className="text-gray-500 text-sm">
-                                                    Base: {homeBase}
-                                                </span>
-                                                {" → "}
-                                                <span className="font-bold text-blue-700 text-xl">
-                                                    {homeEff.toFixed(1)}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Stats Line */}
-                                        {homeStats && (
-                                            <div className="text-xs text-gray-500 mb-2 font-mono">
-                                                Pass: {homeStats.passYds} | Rush: {homeStats.rushYds} | Rec: {homeStats.recYds}
-                                            </div>
-                                        )}
-
-                                        {homePowerup && !homePowerup.isConsumed ? (
-                                            <div className="bg-purple-50 p-2 rounded text-xs border border-purple-200 text-purple-800">
-                                                <span className="font-bold">
-                                                    ⚡ {homePowerup.powerup.name}
-                                                </span>
-                                                : {homePowerup.powerup.description}
-                                            </div>
-                                        ) : (
-                                            <div className="text-gray-400 text-xs italic">
-                                                No active powerup
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Away Team */}
-                                    <div className="px-4">
-                                        <div className="flex justify-between items-baseline mb-2">
-                                            <span className="font-bold text-lg">
-                                                {m.awayTeam.name}
-                                            </span>
-                                            <div className="text-right">
-                                                <span className="text-gray-500 text-sm">
-                                                    Base: {awayBase}
-                                                </span>
-                                                {" → "}
-                                                <span className="font-bold text-blue-700 text-xl">
-                                                    {awayEff.toFixed(1)}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Stats Line */}
-                                        {awayStats && (
-                                            <div className="text-xs text-gray-500 mb-2 font-mono">
-                                                Pass: {awayStats.passYds} | Rush: {awayStats.rushYds} | Rec: {awayStats.recYds}
-                                            </div>
-                                        )}
-
-                                        {awayPowerup && !awayPowerup.isConsumed ? (
-                                            <div className="bg-purple-50 p-2 rounded text-xs border border-purple-200 text-purple-800">
-                                                <span className="font-bold">
-                                                    ⚡ {awayPowerup.powerup.name}
-                                                </span>
-                                                : {awayPowerup.powerup.description}
-                                            </div>
-                                        ) : (
-                                            <div className="text-gray-400 text-xs italic">
-                                                No active powerup
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="mt-2 text-center text-xs text-gray-400 uppercase tracking-widest border-t pt-2">
-                                    Status: {m.status}
-                                </div>
-                            </div>
-                        );
-                    })}
+        <div className="min-h-screen bg-[#020202] text-white font-sans">
+            {/* Header */}
+            <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-zinc-950/50 backdrop-blur-xl sticky top-0 z-20">
+                <div className="flex items-center gap-4">
+                    <Link
+                        href={`/league/${leagueId}/schedule`}
+                        className="text-zinc-500 hover:text-white transition-colors"
+                    >
+                        ← Schedule
+                    </Link>
+                    <div className="h-4 w-px bg-white/10" />
+                    <h1 className="font-black uppercase tracking-tighter text-xl">
+                        Week {weekNum}
+                    </h1>
+                    <span
+                        className={`text-xs font-bold px-3 py-1 rounded-full ${isFinal
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : isLive
+                                ? "bg-yellow-500/20 text-yellow-400 animate-pulse"
+                                : "bg-zinc-800 text-zinc-400"
+                            }`}
+                    >
+                        {isFinal ? "FINAL" : isLive ? "LIVE" : "SCHEDULED"}
+                    </span>
                 </div>
-            </section>
 
-            <section>
-                <h2 className="text-xl font-semibold mb-4">Open Pack</h2>
-                <div className="space-y-6">
-                    {teams.map((team) => {
-                        const activePowerup = getTeamPowerup(team.id);
-                        const offers = getTeamOffers(team.id);
+                <div className="flex items-center gap-3">
+                    {/* Week Navigation */}
+                    <div className="flex items-center gap-1 bg-zinc-900/50 rounded-full p-1">
+                        {allWeeks.slice(0, 18).map((w) => (
+                            <Link
+                                key={w.id}
+                                href={`/league/${leagueId}/week/${w.number}`}
+                                className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold transition-all ${w.number === weekNum
+                                    ? "bg-blue-600 text-white"
+                                    : w.matchups[0]?.status === "final"
+                                        ? "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                                        : "text-zinc-500 hover:text-white"
+                                    }`}
+                            >
+                                {w.number}
+                            </Link>
+                        ))}
+                    </div>
 
-                        return (
-                            <div key={team.id} className="border p-4 rounded shadow-sm">
-                                <h3 className="font-bold text-lg mb-2">{team.name}</h3>
+                    {/* Simulate Button */}
+                    {isScheduled && (
+                        <form
+                            action={async () => {
+                                "use server";
+                                await simulateWeek(leagueId, weekNum);
+                            }}
+                        >
+                            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-full transition-all">
+                                ⚡ Simulate Week
+                            </button>
+                        </form>
+                    )}
 
-                                {activePowerup ? (
-                                    // STATE 1: Powerup Selected (Active or Consumed)
+                    {isFinal && weekNum < allWeeks.length && (
+                        <Link
+                            href={`/league/${leagueId}/week/${weekNum + 1}`}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-full transition-all"
+                        >
+                            Next Week →
+                        </Link>
+                    )}
+                </div>
+            </header>
+
+            <main className="max-w-7xl mx-auto p-6">
+                {/* Matchup Header */}
+                {userMatchup && userTeam && oppTeam && (
+                    <div className="mb-8">
+                        {/* Score Banner */}
+                        <div className="bg-gradient-to-r from-emerald-500/10 via-zinc-900/80 to-blue-500/10 rounded-3xl p-8 border border-white/5">
+                            <div className="flex items-center justify-between">
+                                {/* User Team */}
+                                <div className="flex-1 text-center">
+                                    <div className="text-xs font-bold text-emerald-400 uppercase mb-2">
+                                        Your Team
+                                    </div>
+                                    <div className="text-2xl font-black mb-2">
+                                        {userTeam.name}
+                                    </div>
                                     <div
-                                        className={`p-4 rounded border ${activePowerup.isConsumed
-                                                ? "bg-gray-100 border-gray-300 text-gray-500"
-                                                : "bg-green-50 border-green-200 text-green-900"
+                                        className={`text-6xl font-black ${isFinal
+                                            ? (userScore || 0) > (oppScore || 0)
+                                                ? "text-emerald-400"
+                                                : (userScore || 0) < (oppScore || 0)
+                                                    ? "text-red-400"
+                                                    : "text-zinc-400"
+                                            : "text-zinc-300"
                                             }`}
                                     >
-                                        <div className="font-bold flex items-center gap-2">
-                                            {activePowerup.isConsumed ? (
-                                                <span>✗ Consumed:</span>
-                                            ) : (
-                                                <span>✓ Active:</span>
-                                            )}
-                                            <span>{activePowerup.powerup.name}</span>
-                                        </div>
-                                        <p className="text-sm mt-1">
-                                            {activePowerup.powerup.description}
-                                        </p>
-                                        {activePowerup.powerup.rarity && (
-                                            <p className={`text-xs mt-2 uppercase font-semibold ${activePowerup.powerup.rarity === 'common' ? 'text-gray-500' :
-                                                    activePowerup.powerup.rarity === 'rare' ? 'text-blue-500' :
-                                                        activePowerup.powerup.rarity === 'epic' ? 'text-purple-600' :
-                                                            'text-orange-500'
-                                                }`}>
-                                                Rarity: {activePowerup.powerup.rarity}
-                                            </p>
-                                        )}
-
-                                        {activePowerup.isConsumed ? (
-                                            <p className="text-xs mt-2 italic text-gray-400">This powerup has been used and no longer applies.</p>
-                                        ) : (
-                                            <form action={consumePowerup} className="mt-4">
-                                                <input type="hidden" name="teamPowerupId" value={activePowerup.id} />
-                                                <input type="hidden" name="leagueId" value={leagueId} />
-                                                <input type="hidden" name="weekNumber" value={weekNumber} />
-                                                <button className="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700 transition">
-                                                    Use Powerup
-                                                </button>
-                                            </form>
-                                        )}
+                                        {(userScore || 0).toFixed(1)}
                                     </div>
-                                ) : offers.length > 0 ? (
-                                    // STATE 2: Pack Opened, Offers Available
-                                    <form action={selectPowerup} className="space-y-3">
-                                        <input type="hidden" name="teamId" value={team.id} />
-                                        <input type="hidden" name="weekId" value={week.id} />
-                                        <input type="hidden" name="leagueId" value={leagueId} />
-                                        <input
-                                            type="hidden"
-                                            name="weekNumber"
-                                            value={weekNumber}
-                                        />
+                                </div>
 
-                                        <p className="text-sm font-semibold text-gray-700">Select one powerup from your pack:</p>
+                                <div className="text-zinc-600 font-bold text-xl px-8">VS</div>
 
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            {offers.map((offer) => (
-                                                <label
-                                                    key={offer.id}
-                                                    className="flex flex-col border p-3 rounded cursor-pointer hover:bg-blue-50 transition relative"
-                                                >
-                                                    <div className="flex items-start gap-3">
-                                                        <input
-                                                            type="radio"
-                                                            name="powerupId"
-                                                            value={offer.powerupId}
-                                                            required
-                                                            className="mt-1"
-                                                        />
-                                                        <div>
-                                                            <div className="font-bold text-sm">{offer.powerup.name}</div>
-                                                            <div className="text-xs text-gray-600 mt-1">{offer.powerup.description}</div>
-
-                                                            <div className={`text-[10px] uppercase font-bold mt-2 ${offer.powerup.rarity === 'common' ? 'text-gray-400' :
-                                                                    offer.powerup.rarity === 'rare' ? 'text-blue-500' :
-                                                                        offer.powerup.rarity === 'epic' ? 'text-purple-600' :
-                                                                            'text-orange-500'
-                                                                }`}>
-                                                                {offer.powerup.rarity}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            ))}
-                                        </div>
-
-                                        <div className="pt-2">
-                                            <button
-                                                type="submit"
-                                                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-                                            >
-                                                Select Powerup
-                                            </button>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    // STATE 3: Pack Not Opened Yet
-                                    <div className="bg-gray-50 border border-dashed border-gray-300 p-6 rounded text-center">
-                                        <p className="text-gray-600 mb-4">You have a pack waiting to be opened for this week!</p>
-
-                                        <form
-                                            action={async () => {
-                                                "use server";
-                                                await ensurePackOffers(leagueId, team.id, week.id);
-                                            }}
-                                        >
-                                            <button className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-indigo-700 transition font-bold text-lg animate-pulse">
-                                                🎁 Open Pack
-                                            </button>
-                                        </form>
+                                {/* Opponent Team */}
+                                <div className="flex-1 text-center">
+                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-2">
+                                        Opponent
                                     </div>
-                                )}
+                                    <div className="text-2xl font-black mb-2 text-zinc-400">
+                                        {oppTeam.name}
+                                    </div>
+                                    <div className="text-6xl font-black text-zinc-600">
+                                        {(oppScore || 0).toFixed(1)}
+                                    </div>
+                                </div>
                             </div>
-                        );
-                    })}
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* User Roster */}
+                    <div>
+                        {userRoster && (
+                            <LineupManager
+                                leagueId={leagueId}
+                                weekNumber={weekNum}
+                                starters={userRoster.starters}
+                                bench={userRoster.bench}
+                                isFinal={isFinal}
+                            />
+                        )}
+                    </div>
                 </div>
-            </section>
+            </main>
         </div>
     );
 }

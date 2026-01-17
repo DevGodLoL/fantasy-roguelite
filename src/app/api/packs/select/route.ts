@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -16,14 +16,14 @@ export async function POST(req: Request) {
   }
 
   // Prevent duplicates for same team/week/powerup
-  const existing = await prisma.teamPowerup.findFirst({
+  const existing = await db.teamPowerup.findFirst({
     where: { teamId, weekId, powerupId },
   });
   if (existing) {
     return NextResponse.json({ ok: true, teamPowerup: existing, already: true });
   }
 
-  const created = await prisma.teamPowerup.create({
+  const created = await db.teamPowerup.create({
     data: {
       teamId,
       weekId,
