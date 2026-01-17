@@ -19,7 +19,7 @@ export default async function TeamPage({
             },
             rosterSlots: {
                 include: { player: true },
-                orderBy: [{ isStarter: "desc" }, { slotType: "asc" }],
+                // We'll sort in memory
             },
             powerups: {
                 where: { isConsumed: false },
@@ -31,6 +31,25 @@ export default async function TeamPage({
     if (!team || team.leagueId !== leagueId) {
         notFound();
     }
+
+    // Sort roster slots by standard fantasy order
+    const sortOrder: Record<string, number> = {
+        QB: 1,
+        RB: 2,
+        WR: 3,
+        TE: 4,
+        FLEX: 5,
+        DST: 6,
+        K: 7,
+        BENCH: 8
+    };
+
+    const sortedRoster = [...team.rosterSlots].sort((a, b) => {
+        // First sort by starter vs bench (low number = starter = first)
+        const aScore = (a.isStarter ? 0 : 100) + (sortOrder[a.slotType] || 99);
+        const bScore = (b.isStarter ? 0 : 100) + (sortOrder[b.slotType] || 99);
+        return aScore - bScore;
+    });
 
     const draftStatus = team.league.draft?.status || "pre_draft";
 
@@ -137,12 +156,12 @@ export default async function TeamPage({
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-zinc-800/30">
-                                            {team.rosterSlots.map((slot) => (
+                                            {sortedRoster.map((slot) => (
                                                 <tr key={slot.id} className="group hover:bg-white/[0.02] transition-colors">
                                                     <td className="px-6 py-5">
                                                         <span className={`text-xs font-black px-2 py-1 rounded ${slot.isStarter ? 'bg-purple-500/10 text-purple-400' : 'bg-zinc-800 text-zinc-500'
                                                             }`}>
-                                                            {slot.slotType}
+                                                            {slot.slotType === "BENCH" ? "BN" : slot.slotType}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-5">

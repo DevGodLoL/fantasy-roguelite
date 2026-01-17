@@ -45,6 +45,21 @@ export default function LineupManager({
     const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
     const [isSwapping, setIsSwapping] = useState(false);
 
+    // Standard Fantasy Sort Order
+    const sortOrder: Record<string, number> = {
+        QB: 1,
+        RB: 2,
+        WR: 3,
+        TE: 4,
+        FLEX: 5,
+        DST: 6,
+        K: 7,
+    };
+
+    const sortedStarters = [...starters].sort((a, b) => {
+        return (sortOrder[a.slotType] || 99) - (sortOrder[b.slotType] || 99);
+    });
+
     const handleSlotClick = async (slotId: string) => {
         if (isFinal || isSwapping) return;
 
@@ -125,7 +140,7 @@ export default function LineupManager({
 
             {/* Starters */}
             <div className="space-y-2">
-                {starters.map((slot) => renderSlot(slot))}
+                {sortedStarters.map((slot) => renderSlot(slot))}
             </div>
 
             {/* Bench */}
