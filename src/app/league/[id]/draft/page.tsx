@@ -320,35 +320,145 @@ export default async function DraftRoom({
                 </main>
 
                 {/* Right: Your Roster */}
-                <aside className="w-[200px] border-l border-white/5 bg-zinc-950/40 p-4 shrink-0 overflow-y-auto">
+                <aside className="w-[220px] border-l border-white/5 bg-zinc-950/40 p-4 shrink-0 overflow-y-auto">
                     <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-500/80 mb-4">Your Roster</h2>
-                    <div className="space-y-1">
-                        {draft.picks
-                            .filter(p => p.team.name === USER_TEAM_NAME)
-                            .map(pick => (
-                                <div key={pick.id} className={`text-xs p-2 rounded-lg ${posColors[pick.player?.position || ''] || 'bg-zinc-800/50'}`}>
-                                    <div className="font-bold truncate">{pick.player ? formatPlayerName(pick.player.name) : ''}</div>
-                                    <div className="text-[9px] opacity-60">{pick.player?.position} · Rd {pick.round}</div>
-                                </div>
-                            ))
-                        }
-                        {draft.picks.filter(p => p.team.name === USER_TEAM_NAME).length === 0 && (
-                            <div className="text-xs text-zinc-600 italic">No picks yet</div>
-                        )}
-                    </div>
 
-                    {/* Legend */}
-                    <div className="mt-6 pt-4 border-t border-white/5">
-                        <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-600 mb-2">Positions</h3>
-                        <div className="grid grid-cols-2 gap-1 text-[9px]">
-                            <div className="text-red-400">● QB</div>
-                            <div className="text-green-400">● RB</div>
-                            <div className="text-blue-400">● WR</div>
-                            <div className="text-orange-400">● TE</div>
-                            <div className="text-purple-400">● K</div>
-                            <div className="text-yellow-400">● DST</div>
-                        </div>
-                    </div>
+                    {(() => {
+                        // Define roster structure
+                        const rosterSlots = [
+                            { type: "QB", count: 1, label: "Quarterback" },
+                            { type: "RB", count: 2, label: "Running Back" },
+                            { type: "WR", count: 2, label: "Wide Receiver" },
+                            { type: "TE", count: 1, label: "Tight End" },
+                            { type: "FLEX", count: 1, label: "Flex (RB/WR/TE)", accepts: ["RB", "WR", "TE"] },
+                            { type: "DST", count: 1, label: "Defense" },
+                            { type: "K", count: 1, label: "Kicker" },
+                        ];
+                        const benchCount = 6;
+
+                        // Get user's picks
+                        const userPicks = draft.picks.filter(p => p.team.name === USER_TEAM_NAME);
+
+                        // Count picks by position
+                        const picksByPosition: Record<string, typeof userPicks> = {};
+                        for (const pick of userPicks) {
+                            const pos = pick.player?.position || "UNKNOWN";
+                            if (!picksByPosition[pos]) picksByPosition[pos] = [];
+                            picksByPosition[pos].push(pick);
+                        }
+
+                        // Assign picks to slots
+                        const filledSlots: { type: string; pick: typeof userPicks[0] | null }[] = [];
+                        const usedPickIds = new Set<string>();
+
+                        // Fill starter slots first
+                        for (const slot of rosterSlots) {
+                            for (let i = 0; i < slot.count; i++) {
+                                const acceptedPositions = slot.accepts || [slot.type];
+                                let assignedPick: typeof userPicks[0] | null = null;
+
+                                for (const pos of acceptedPositions) {
+                                    const available = (picksByPosition[pos] || []).find(p => !usedPickIds.has(p.id));
+                                    if (available) {
+                                        assignedPick = available;
+                                        usedPickIds.add(available.id);
+                                        break;
+                                    }
+                                }
+                                filledSlots.push({ type: slot.type, pick: assignedPick });
+                            }
+                        }
+
+                        // Remaining picks go to bench
+                        const benchPicks = userPicks.filter(p => !usedPickIds.has(p.id));
+
+                        // Count filled vs total for each position type
+                        const slotCounts: Record<string, { filled: number; total: number }> = {};
+                        for (const slot of rosterSlots) {
+                            slotCounts[slot.type] = { filled: 0, total: slot.count };
+                        }
+                        for (const fs of filledSlots) {
+                            if (fs.pick) {
+                                slotCounts[fs.type].filled++;
+                            }
+                        }
+
+                        return (
+                            <div className="space-y-3">
+                                {/* Starter Positions */}
+                                {rosterSlots.map((slot) => {
+                                    const slotsForType = filledSlots.filter(fs => fs.type === slot.type);
+                                    const filled = slotCounts[slot.type].filled;
+                                    const total = slotCounts[slot.type].total;
+                                    const isFull = filled >= total;
+
+                                    return (
+                                        <div key={slot.type} className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <span className={`text-[9px] font-black uppercase ${posColors[slot.type]?.split(' ')[0] || 'text-zinc-400'}`}>
+                                                    {slot.type}
+                                                </span>
+                                                <span className={`text-[9px] font-bold ${isFull ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                                                    {filled}/{total}
+                                                </span>
+                                            </div>
+                                            {slotsForType.map((fs, idx) => (
+                                                <div
+                                                    key={`${slot.type}-${idx}`}
+                                                    className={`p-2 rounded-lg text-xs ${fs.pick
+                                                            ? posColors[fs.pick.player?.position || ''] || 'bg-zinc-800/50'
+                                                            : 'bg-zinc-900/50 border border-dashed border-white/10'
+                                                        }`}
+                                                >
+                                                    {fs.pick ? (
+                                                        <>
+                                                            <div className="font-bold truncate">{fs.pick.player ? formatPlayerName(fs.pick.player.name) : ''}</div>
+                                                            <div className="text-[9px] opacity-60">{fs.pick.player?.teamAbbr}</div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-zinc-600 italic text-center">Empty</div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+
+                                {/* Bench */}
+                                <div className="pt-3 mt-3 border-t border-white/5">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[9px] font-black uppercase text-zinc-500">BENCH</span>
+                                        <span className={`text-[9px] font-bold ${benchPicks.length >= benchCount ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                                            {benchPicks.length}/{benchCount}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {Array.from({ length: benchCount }, (_, idx) => {
+                                            const benchPick = benchPicks[idx];
+                                            return (
+                                                <div
+                                                    key={`bench-${idx}`}
+                                                    className={`p-2 rounded-lg text-xs ${benchPick
+                                                            ? posColors[benchPick.player?.position || ''] || 'bg-zinc-800/50'
+                                                            : 'bg-zinc-900/30 border border-dashed border-white/5'
+                                                        }`}
+                                                >
+                                                    {benchPick ? (
+                                                        <>
+                                                            <div className="font-bold truncate">{benchPick.player ? formatPlayerName(benchPick.player.name) : ''}</div>
+                                                            <div className="text-[9px] opacity-60">{benchPick.player?.position} · {benchPick.player?.teamAbbr}</div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-zinc-700 italic text-center text-[10px]">—</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </aside>
             </div>
         </div>

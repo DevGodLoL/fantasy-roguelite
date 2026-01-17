@@ -93,12 +93,16 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
     return null;
 }
 
-export async function pickPlayer(
+/**
+ * Internal function to execute a single pick without triggering auto-continue.
+ * Used by both user picks and AI picks.
+ */
+async function executePickInternal(
     leagueId: string,
     draftId: string,
     teamId: string,
     playerId: string
-) {
+): Promise<{ success: boolean; draftComplete?: boolean }> {
     // 1. Get the draft state
     const draft = await prisma.draft.findUnique({
         where: { id: draftId },
@@ -106,7 +110,7 @@ export async function pickPlayer(
     });
 
     if (!draft || draft.status !== "drafting") {
-        throw new Error("Draft is not active.");
+        return { success: false };
     }
 
     // 2. Identify whose turn it is
@@ -134,7 +138,7 @@ export async function pickPlayer(
     const activeTeam = teamsInLeague[activeTeamIndex];
 
     if (activeTeam.id !== teamId) {
-        throw new Error("It is not your turn to pick.");
+        return { success: false };
     }
 
     // 3. Verify player availability
@@ -146,12 +150,12 @@ export async function pickPlayer(
     });
 
     if (isTaken) {
-        throw new Error("Player has already been drafted.");
+        return { success: false };
     }
 
     // 4. Find an open slot for this player
     const player = await prisma.player.findUnique({ where: { id: playerId } });
-    if (!player) throw new Error("Player not found.");
+    if (!player) return { success: false };
 
     // Slot priority logic
     let targetSlot;
@@ -173,7 +177,7 @@ export async function pickPlayer(
     }
 
     if (!targetSlot) {
-        throw new Error("No available roster slots for this position.");
+        return { success: false };
     }
 
     // 5. Execute the pick
@@ -204,21 +208,60 @@ export async function pickPlayer(
             where: { id: draftId },
             data: { status: "completed" }
         });
+        return { success: true, draftComplete: true };
+    }
+
+    return { success: true };
+}
+
+/**
+ * Main function called when the USER makes a pick.
+ * After the user's pick, it automatically runs AI picks until it's the user's turn again.
+ */
+export async function pickPlayer(
+    leagueId: string,
+    draftId: string,
+    teamId: string,
+    playerId: string
+) {
+    // Execute the user's pick
+    const result = await executePickInternal(leagueId, draftId, teamId, playerId);
+
+    if (!result.success) {
+        throw new Error("Failed to execute pick");
+    }
+
+    if (result.draftComplete) {
+        revalidatePath(`/league/${leagueId}/draft`);
+        return;
+    }
+
+    // Auto-continue: Run AI picks until it's the user's turn again
+    for (let i = 0; i < 10; i++) {  // Max 10 AI picks (full round)
+        const aiResult = await runSingleAIPick(leagueId, draftId);
+        if (!aiResult.success || aiResult.isUserTurn || aiResult.draftComplete) {
+            break;
+        }
     }
 
     revalidatePath(`/league/${leagueId}/draft`);
 }
 
 /**
- * Auto-draft for AI teams. Called when it's not the user's turn.
+ * Internal function to run a single AI pick.
+ * Returns info about whether to continue or stop.
  */
-export async function autoDraft(leagueId: string, draftId: string) {
+async function runSingleAIPick(leagueId: string, draftId: string): Promise<{
+    success: boolean;
+    isUserTurn?: boolean;
+    draftComplete?: boolean;
+}> {
     const draft = await prisma.draft.findUnique({
         where: { id: draftId },
     });
 
     if (!draft || draft.status !== "drafting") {
-        return { success: false, message: "Draft not active" };
+        return { success: false };
     }
 
     const teamsInLeague = await prisma.team.findMany({
@@ -246,25 +289,37 @@ export async function autoDraft(leagueId: string, draftId: string) {
 
     // If it's the user's team, don't auto-draft
     if (activeTeam.name === USER_TEAM_NAME) {
-        return { success: false, message: "It's your turn!", isUserTurn: true };
+        return { success: false, isUserTurn: true };
     }
 
     // Get best available player for AI
     const bestPlayer = await getBestAvailablePlayer(leagueId, activeTeam.id);
 
     if (!bestPlayer) {
-        return { success: false, message: "No players available" };
+        return { success: false };
     }
 
     // Execute the AI pick
-    await pickPlayer(leagueId, draftId, activeTeam.id, bestPlayer.id);
+    const pickResult = await executePickInternal(leagueId, draftId, activeTeam.id, bestPlayer.id);
 
     return {
-        success: true,
-        message: `${activeTeam.name} drafted ${bestPlayer.name}`,
-        teamName: activeTeam.name,
-        playerName: bestPlayer.name,
+        success: pickResult.success,
+        draftComplete: pickResult.draftComplete,
     };
+}
+
+/**
+ * Public auto-draft function (for manual button if needed)
+ */
+export async function autoDraft(leagueId: string, draftId: string) {
+    const result = await runSingleAIPick(leagueId, draftId);
+
+    if (result.isUserTurn) {
+        return { success: false, message: "It's your turn!", isUserTurn: true };
+    }
+
+    revalidatePath(`/league/${leagueId}/draft`);
+    return result;
 }
 
 /**
@@ -317,5 +372,17 @@ export async function startDraft(draftId: string, leagueId: string) {
         where: { id: draftId },
         data: { status: "drafting" }
     });
+
+    // After starting, auto-run AI picks until it's user's turn
+    const draft = await prisma.draft.findUnique({ where: { id: draftId } });
+    if (draft) {
+        for (let i = 0; i < 10; i++) {
+            const result = await runSingleAIPick(leagueId, draftId);
+            if (!result.success || result.isUserTurn || result.draftComplete) {
+                break;
+            }
+        }
+    }
+
     revalidatePath(`/league/${leagueId}/draft`);
 }
