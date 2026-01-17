@@ -192,6 +192,13 @@ async function main() {
     { name: "Javonte Williams", pos: "RB", team: "DEN" },
     { name: "Nick Chubb", pos: "RB", team: "CLE" },
     { name: "Aaron Jones", pos: "RB", team: "MIN" },
+    { name: "Tony Pollard", pos: "RB", team: "TEN" },
+    { name: "Rhamondre Stevenson", pos: "RB", team: "NE" },
+    { name: "Zamir White", pos: "RB", team: "LV" },
+    { name: "Jerome Ford", pos: "RB", team: "CLE" },
+    { name: "Jaylen Warren", pos: "RB", team: "PIT" },
+    { name: "Tyjae Spears", pos: "RB", team: "TEN" },
+    { name: "Chuba Hubbard", pos: "RB", team: "CAR" },
 
     // --- WIDE RECEIVERS ---
     { name: "Justin Jefferson", pos: "WR", team: "MIN" },
@@ -246,6 +253,21 @@ async function main() {
     { name: "Cole Kmet", pos: "TE", team: "CHI" },
     { name: "Dalton Schultz", pos: "TE", team: "HOU" },
     { name: "T.J. Hockenson", pos: "TE", team: "MIN" },
+    { name: "Pat Freiermuth", pos: "TE", team: "PIT" },
+    { name: "Taysom Hill", pos: "TE", team: "NO" },
+    { name: "Hunter Henry", pos: "TE", team: "NE" },
+    { name: "Jonnu Smith", pos: "TE", team: "MIA" },
+    { name: "Gerald Everett", pos: "TE", team: "CHI" },
+    { name: "Cade Otton", pos: "TE", team: "TB" },
+    { name: "Mike Gesicki", pos: "TE", team: "CIN" },
+    { name: "Noah Fant", pos: "TE", team: "SEA" },
+
+    // Additional QBs for depth
+    { name: "Deshaun Watson", pos: "QB", team: "CLE" },
+    { name: "Geno Smith", pos: "QB", team: "SEA" },
+    { name: "Derek Carr", pos: "QB", team: "NO" },
+    { name: "Baker Mayfield", pos: "QB", team: "TB" },
+    { name: "Sam Darnold", pos: "QB", team: "MIN" },
 
     // --- DEFENSE / SPECIAL TEAMS ---
     { name: "Browns DST", pos: "DST", team: "CLE" },
@@ -258,6 +280,12 @@ async function main() {
     { name: "Chiefs DST", pos: "DST", team: "KC" },
     { name: "Dolphins DST", pos: "DST", team: "MIA" },
     { name: "Saints DST", pos: "DST", team: "NO" },
+    { name: "Texans DST", pos: "DST", team: "HOU" },
+    { name: "Lions DST", pos: "DST", team: "DET" },
+    { name: "Eagles DST", pos: "DST", team: "PHI" },
+    { name: "Broncos DST", pos: "DST", team: "DEN" },
+    { name: "Patriots DST", pos: "DST", team: "NE" },
+    { name: "Chargers DST", pos: "DST", team: "LAC" },
 
     // --- KICKERS ---
     { name: "Brandon Aubrey", pos: "K", team: "DAL" },
@@ -270,6 +298,12 @@ async function main() {
     { name: "Evan McPherson", pos: "K", team: "CIN" },
     { name: "Cameron Dicker", pos: "K", team: "LAC" },
     { name: "Jake Moody", pos: "K", team: "SF" },
+    { name: "Chris Boswell", pos: "K", team: "PIT" },
+    { name: "Ka'imi Fairbairn", pos: "K", team: "HOU" },
+    { name: "Matt Gay", pos: "K", team: "IND" },
+    { name: "Cairo Santos", pos: "K", team: "CHI" },
+    { name: "Daniel Carlson", pos: "K", team: "LV" },
+    { name: "Blake Grupe", pos: "K", team: "NO" },
   ];
 
   for (const p of players) {

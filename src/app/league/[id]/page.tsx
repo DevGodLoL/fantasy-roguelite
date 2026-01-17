@@ -57,12 +57,20 @@ export default async function LeaguePage({
                 Go to Draft Room
               </Link>
             ) : (
-              <Link
-                href={`/league/${id}/waivers`}
-                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs rounded-full transition-all"
-              >
-                Waiver Wire
-              </Link>
+              <div className="flex gap-3">
+                <Link
+                  href={`/league/${id}/schedule`}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase text-xs rounded-full transition-all"
+                >
+                  Schedule
+                </Link>
+                <Link
+                  href={`/league/${id}/waivers`}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs rounded-full transition-all"
+                >
+                  Waiver Wire
+                </Link>
+              </div>
             )}
           </div>
         </header>

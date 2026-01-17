@@ -90,6 +90,17 @@ async function getBestAvailablePlayer(leagueId: string, teamId: string) {
         return availablePlayers[randomIndex];
     }
 
+    // Fallback: if no players found for target position, get any available player
+    const anyPlayer = await prisma.player.findMany({
+        where: { id: { notIn: draftedPlayerIds } },
+        orderBy: { name: "asc" },
+        take: 5,
+    });
+
+    if (anyPlayer.length > 0) {
+        return anyPlayer[Math.floor(Math.random() * anyPlayer.length)];
+    }
+
     return null;
 }
 

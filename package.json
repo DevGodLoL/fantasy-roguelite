@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio --browser none",
     "seed": "tsx prisma/seed.ts",
+    "mock-draft": "tsx scripts/run-mock-draft.ts",
     "verify": "tsx scripts/verify-powerups.ts",
     "db:check": "npm run prisma:generate && npx prisma migrate status && npm run seed && npm run verify"
   },
