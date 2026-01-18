@@ -463,6 +463,7 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
         revalidatePath(`/league/${leagueId}/schedule`);
         // Revalidate Logs
         revalidatePath(`/league/${leagueId}/transactions`);
+        revalidatePath(`/league/${leagueId}/admin`);
 
         return { success: true };
     } catch (e: any) {
