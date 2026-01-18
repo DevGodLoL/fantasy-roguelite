@@ -23,8 +23,8 @@ function checkMutations(playerId: string, points: number, leagueId: string, curr
     if (points >= 25) {
         // High Score Chance
         const roll = Math.random();
-        if (roll < 0.4) mutations.push(TRAIT_DEFINITIONS.HOT_HAND);
-        else if (roll < 0.1) mutations.push(TRAIT_DEFINITIONS.GENIUS);
+        if (roll < 0.1) mutations.push(TRAIT_DEFINITIONS.GENIUS);
+        else if (roll < 0.5) mutations.push(TRAIT_DEFINITIONS.HOT_HAND);
     }
     if (points >= 35) {
         // Elite Score Chance
@@ -312,7 +312,7 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                                                 traits: {
                                                     where: {
                                                         leagueId,
-                                                        OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gt: weekNumber } }]
+                                                        OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gte: weekNumber } }]
                                                     }
                                                 }
                                             }
