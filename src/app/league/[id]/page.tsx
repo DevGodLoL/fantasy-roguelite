@@ -172,6 +172,12 @@ export default async function LeaguePage({
                   >
                     Artifacts
                   </Link>
+                  <Link
+                    href={`/league/${id}/admin`}
+                    className="px-6 py-2 bg-red-900/50 hover:bg-red-600 text-red-200 hover:text-white border border-red-500/30 font-black uppercase text-xs rounded-full transition-all"
+                  >
+                    Admin
+                  </Link>
                 </div>
               )}
             </div>
