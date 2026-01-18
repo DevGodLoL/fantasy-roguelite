@@ -154,7 +154,7 @@ export default function LineupManager({
                             onClick={(e) => {
                                 if (slot.player) {
                                     e.stopPropagation();
-                                    openPlayerModal(slot.player.id);
+                                    openPlayerModal(slot.player.id, leagueId);
                                 }
                             }}
                         >

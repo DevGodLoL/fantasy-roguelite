@@ -5,7 +5,7 @@ import { getPlayerDetails, PlayerDetails } from "@/app/actions/get-player-detail
 import PlayerDetailModal from "@/components/PlayerDetailModal";
 
 interface PlayerModalContextType {
-    openPlayerModal: (playerId: string) => void;
+    openPlayerModal: (playerId: string, leagueId?: string) => void;
     closePlayerModal: () => void;
 }
 
@@ -16,12 +16,12 @@ export function PlayerModalProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(false);
     const [playerData, setPlayerData] = useState<PlayerDetails | null>(null);
 
-    const openPlayerModal = async (playerId: string) => {
+    const openPlayerModal = async (playerId: string, leagueId?: string) => {
         setIsOpen(true);
         setIsLoading(true);
         setPlayerData(null); // Reset previous data
         try {
-            const data = await getPlayerDetails(playerId);
+            const data = await getPlayerDetails(playerId, leagueId);
             setPlayerData(data);
         } catch (error) {
             console.error("Failed to fetch player details:", error);

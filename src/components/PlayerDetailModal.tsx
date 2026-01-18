@@ -83,6 +83,26 @@ export default function PlayerDetailModal({ isLoading, player, onClose }: Player
                             </div>
                         </div>
 
+                        {/* Active Mutations */}
+                        {player.traits && player.traits.length > 0 && (
+                            <div className="px-8 pt-8 pb-0">
+                                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-3">Active Mutations</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {player.traits.map((trait, idx) => (
+                                        <div key={idx} className={`px-3 py-2 rounded-lg border flex flex-col justify-center ${trait.rarity === 'legendary' ? 'bg-orange-500/10 border-orange-500/30 text-orange-200' :
+                                                trait.rarity === 'epic' ? 'bg-purple-500/10 border-purple-500/30 text-purple-200' :
+                                                    trait.rarity === 'rare' ? 'bg-blue-500/10 border-blue-500/30 text-blue-200' :
+                                                        trait.rarity === 'uncommon' ? 'bg-green-500/10 border-green-500/30 text-green-200' :
+                                                            'bg-zinc-800 border-zinc-700 text-zinc-300'
+                                            }`}>
+                                            <div className="text-xs font-black uppercase tracking-wider mb-0.5">{trait.name}</div>
+                                            <div className="text-[10px] opacity-70 leading-tight">{trait.description}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Content */}
                         <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
 

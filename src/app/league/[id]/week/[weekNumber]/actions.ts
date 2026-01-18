@@ -3,7 +3,61 @@
 import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// Rarity weights (cumulative)
+// --- TRAIT DEFINITIONS ---
+const TRAIT_DEFINITIONS: Record<string, any> = {
+    HOT_HAND: { code: 'HOT_HAND', name: "Hot Hand", description: "In the zone! +10% Points.", kind: "multiplier", value: 1.1, duration: 1, rarity: "uncommon" },
+    GENIUS: { code: 'GENIUS', name: "Genius", description: "High IQ play. +15% Points.", kind: "multiplier", value: 1.15, duration: 2, rarity: "rare" },
+    CLUTCH: { code: 'CLUTCH', name: "Clutch", description: "Performs under pressure. +5 pts.", kind: "bonus_flat", value: 5.0, duration: 3, rarity: "epic" },
+    LEGENDARY_AURA: { code: 'LEGENDARY_AURA', name: "Legendary Aura", description: "Permanent +2 pts.", kind: "bonus_flat", value: 2.0, duration: null, rarity: "legendary" },
+
+    COLD: { code: 'COLD', name: "Cold Streak", description: "Sluggish. -10% Points.", kind: "multiplier", value: 0.9, duration: 1, rarity: "common" },
+    SHOOK: { code: 'SHOOK', name: "Shook", description: "Confidence shattered. -20% Points.", kind: "multiplier", value: 0.8, duration: 2, rarity: "uncommon" },
+    VULNERABLE: { code: 'VULNERABLE', name: "Vulnerable", description: "Prone to mistakes. -3 pts.", kind: "bonus_flat", value: -3.0, duration: 1, rarity: "common" },
+};
+
+// Check for new mutations based on performance
+function checkMutations(playerId: string, points: number, leagueId: string, currentWeekNumber: number) {
+    const mutations = [];
+
+    // POSITIVE MUTATIONS
+    if (points >= 25) {
+        // High Score Chance
+        const roll = Math.random();
+        if (roll < 0.4) mutations.push(TRAIT_DEFINITIONS.HOT_HAND);
+        else if (roll < 0.1) mutations.push(TRAIT_DEFINITIONS.GENIUS);
+    }
+    if (points >= 35) {
+        // Elite Score Chance
+        if (Math.random() < 0.05) mutations.push(TRAIT_DEFINITIONS.LEGENDARY_AURA);
+        else mutations.push(TRAIT_DEFINITIONS.CLUTCH);
+    }
+
+    // NEGATIVE MUTATIONS
+    if (points < 5 && points > -5) {
+        // Low Score Chance (but not DNP 0)
+        // Assume starters > 0 if they played.
+        if (Math.random() < 0.25) mutations.push(TRAIT_DEFINITIONS.COLD);
+    }
+    if (points < 0) {
+        // Negative points = Bad
+        mutations.push(TRAIT_DEFINITIONS.SHOOK);
+    }
+
+    // Helper to format for DB
+    return mutations.map(def => ({
+        playerId,
+        leagueId,
+        code: def.code,
+        name: def.name,
+        description: def.description,
+        rarity: def.rarity,
+        kind: def.kind,
+        value: def.value,
+        expiresAtWeek: def.duration ? currentWeekNumber + def.duration : null
+    }));
+}
+
+// Rarity weights (cumulative) for Packs
 const RARITY_WEIGHTS = [
     { type: "common", threshold: 0.7 },
     { type: "rare", threshold: 0.9 }, // 0.7 + 0.2
@@ -12,7 +66,6 @@ const RARITY_WEIGHTS = [
 ];
 
 function selectRarity(): string {
-
     const r = Math.random();
     if (r < 0.7) return "common";
     if (r < 0.9) return "rare";
@@ -170,6 +223,7 @@ const generateStats = (pos: string) => {
     let points = 0;
     let stats = { passYds: 0, rushYds: 0, recYds: 0, tds: 0, fumbles: 0 };
 
+    // ... (Stats Logic Same as Before) but reduced boilerplate for readability ...
     switch (pos) {
         case "QB":
             stats.passYds = Math.floor(Math.random() * 250 + 150);
@@ -197,10 +251,9 @@ const generateStats = (pos: string) => {
             points = Math.random() * 15 + 5;
     }
 
-    // Random fumble chance (5% per player)
     if (Math.random() < 0.05) {
         stats.fumbles = 1;
-        points -= 2; // Standard fumble penalty
+        points -= 2;
     }
 
     return { points: parseFloat(points.toFixed(2)), stats };
@@ -213,18 +266,16 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
     try {
         console.log(`Starting simulation for league ${leagueId} week ${weekNumber}`);
 
-        // 1. Get Week ID first to filter powerups
+        // 1. Get Week ID
         const weekRef = await db.week.findUnique({
             where: { leagueId_number: { leagueId, number: weekNumber } },
         });
 
-        if (!weekRef) {
-            console.error("Week not found (weekRef is null)");
-            throw new Error("Week not found");
-        }
-        console.log(`Found weekRef: ${weekRef.id}`);
+        if (!weekRef) throw new Error("Week not found");
 
-        // 2. Fetch full data
+        const transactions = [];
+
+        // 2. Fetch full data including TRAITS
         const week = await db.week.findUnique({
             where: { id: weekRef.id },
             include: {
@@ -233,7 +284,18 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                         homeTeam: {
                             include: {
                                 rosterSlots: {
-                                    include: { player: true },
+                                    include: {
+                                        player: {
+                                            include: {
+                                                traits: {
+                                                    where: {
+                                                        leagueId,
+                                                        OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gt: weekNumber } }]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
                                 },
                                 powerups: {
                                     where: { weekId: weekRef.id, isConsumed: false },
@@ -244,7 +306,18 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                         awayTeam: {
                             include: {
                                 rosterSlots: {
-                                    include: { player: true },
+                                    include: {
+                                        player: {
+                                            include: {
+                                                traits: {
+                                                    where: {
+                                                        leagueId,
+                                                        OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gt: weekNumber } }]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
                                 },
                                 powerups: {
                                     where: { weekId: weekRef.id, isConsumed: false },
@@ -257,68 +330,81 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
             },
         });
 
-        if (!week) {
-            console.error("Week data load failed (week is null)");
-            throw new Error("Week data load failed");
-        }
-        console.log(`Fetched week with ${week.matchups.length} matchups`);
+        if (!week) throw new Error("Week data load failed");
 
-        const transactions = [];
+        // Helper to process a team's performance
+        const processTeam = (team: any) => {
+            let total = 0;
+            let fumbles = 0;
+
+            for (const slot of team.rosterSlots) {
+                if (slot.player) {
+                    const { points: rawPoints, stats } = generateStats(slot.player.position);
+                    let finalPoints = rawPoints;
+
+                    // Apply ACTIVE TRAITS
+                    if (slot.player.traits && slot.player.traits.length > 0) {
+                        for (const trait of slot.player.traits) {
+                            if (trait.kind === 'multiplier') finalPoints *= trait.value;
+                            if (trait.kind === 'bonus_flat') finalPoints += trait.value;
+                        }
+                    }
+
+                    if (slot.slotType !== "BENCH") {
+                        total += finalPoints;
+                    }
+                    fumbles += stats.fumbles;
+
+                    // Log Performance
+                    transactions.push(
+                        db.playerPerformance.upsert({
+                            where: { playerId_weekId: { playerId: slot.player.id, weekId: week.id } },
+                            create: { playerId: slot.player.id, weekId: week.id, points: finalPoints, ...stats },
+                            update: { points: finalPoints, ...stats },
+                        })
+                    );
+
+                    // Check for NEW MUTATIONS
+                    const newMutations = checkMutations(slot.player.id, finalPoints, leagueId, weekNumber);
+                    for (const m of newMutations) {
+                        transactions.push(
+                            db.playerTrait.create({ data: m })
+                        );
+                        // Notify League Log
+                        transactions.push(
+                            db.leagueTransaction.create({
+                                data: {
+                                    leagueId,
+                                    teamId: team.id,
+                                    playerId: slot.player.id,
+                                    type: "TRAIT_GAINED", // Custom type
+                                    description: `${slot.player.name} gained trait: ${m.name} (${m.description})`
+                                }
+                            })
+                        );
+                    }
+                }
+            }
+            return { total, fumbles };
+        };
 
         for (const matchup of week.matchups) {
             console.log(`Processing matchup ${matchup.id}`);
-            let homeTotal = 0;
-            let awayTotal = 0;
 
-            // Track stats for penalty calculation (e.g. fumbles)
-            let homeFumbles = 0;
-            let awayFumbles = 0;
+            const home = processTeam(matchup.homeTeam);
+            const away = processTeam(matchup.awayTeam);
 
-            // --- HOME TEAM STATS ---
-            for (const slot of matchup.homeTeam.rosterSlots) {
-                if (slot.player) {
-                    const { points, stats } = generateStats(slot.player.position);
-                    if (slot.slotType !== "BENCH") {
-                        homeTotal += points;
-                    }
-                    homeFumbles += stats.fumbles;
+            let homeTotal = home.total;
+            let awayTotal = away.total;
+            let homeFumbles = home.fumbles;
+            let awayFumbles = away.fumbles;
 
-                    transactions.push(
-                        db.playerPerformance.upsert({
-                            where: { playerId_weekId: { playerId: slot.player.id, weekId: week.id } },
-                            create: { playerId: slot.player.id, weekId: week.id, points, ...stats },
-                            update: { points, ...stats },
-                        })
-                    );
-                }
-            }
-
-            // --- AWAY TEAM STATS ---
-            for (const slot of matchup.awayTeam.rosterSlots) {
-                if (slot.player) {
-                    const { points, stats } = generateStats(slot.player.position);
-                    if (slot.slotType !== "BENCH") {
-                        awayTotal += points;
-                    }
-                    awayFumbles += stats.fumbles;
-
-                    transactions.push(
-                        db.playerPerformance.upsert({
-                            where: { playerId_weekId: { playerId: slot.player.id, weekId: week.id } },
-                            create: { playerId: slot.player.id, weekId: week.id, points, ...stats },
-                            update: { points, ...stats },
-                        })
-                    );
-                }
-            }
-
-            // --- POWERUP LOGIC ---
+            // --- POWERUP LOGIC (Team Level) ---
             let homeMultiplier = 1.0;
             let homeBonus = 0;
             let awayMultiplier = 1.0;
             let awayBonus = 0;
 
-            console.log(`Home powerups: ${matchup.homeTeam.powerups.length}`);
             // Apply Home Powerups
             for (const tp of matchup.homeTeam.powerups) {
                 const p = tp.powerup;
@@ -329,16 +415,13 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                     if (p.kind === "penalty" && p.value && p.code !== "CURSE_OF_THE_FUMBLE") {
                         awayBonus -= p.value; // Generic penalty
                     }
-                    // Specific Logic: Fumble Curse
                     if (p.code === "CURSE_OF_THE_FUMBLE" && p.value) {
                         awayBonus -= (awayFumbles * p.value);
                     }
                 }
-                // Mark consumed
                 transactions.push(db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } }));
             }
 
-            console.log(`Away powerups: ${matchup.awayTeam.powerups.length}`);
             // Apply Away Powerups
             for (const tp of matchup.awayTeam.powerups) {
                 const p = tp.powerup;
@@ -353,7 +436,6 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                         homeBonus -= (homeFumbles * p.value);
                     }
                 }
-                // Mark consumed
                 transactions.push(db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } }));
             }
 
@@ -379,6 +461,8 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
 
         revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
         revalidatePath(`/league/${leagueId}/schedule`);
+        // Revalidate Logs
+        revalidatePath(`/league/${leagueId}/transactions`);
 
         return { success: true };
     } catch (e: any) {
@@ -387,9 +471,7 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
     }
 }
 
-/**
- * Advance to the next week
- */
+// ... (Rest of file: advanceToNextWeek, swapLineupSlots unchanged)
 export async function advanceToNextWeek(leagueId: string, currentWeekNumber: number) {
     const nextWeek = await db.week.findUnique({
         where: { leagueId_number: { leagueId, number: currentWeekNumber + 1 } },
@@ -403,9 +485,6 @@ export async function advanceToNextWeek(leagueId: string, currentWeekNumber: num
     return { success: true, nextWeekNumber: currentWeekNumber + 1 };
 }
 
-/**
- * Swap players between two roster slots
- */
 export async function swapLineupSlots(
     leagueId: string,
     weekNumber: number,

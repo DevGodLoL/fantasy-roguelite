@@ -48,7 +48,7 @@ export default function DraftPlayerList({
                     <div className="text-xs text-white animate-pulse">Drafting...</div>
                 </div>
             )}
-            <PlayerList players={players} canDraft={canDraft && !isPending} onDraft={handleDraft} />
+            <PlayerList players={players} canDraft={canDraft && !isPending} onDraft={handleDraft} leagueId={leagueId} />
         </div>
     );
 }

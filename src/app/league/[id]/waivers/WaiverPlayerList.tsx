@@ -121,7 +121,7 @@ export default function WaiverPlayerList({ leagueId, userTeam, players }: Waiver
                                 </div>
                                 <div
                                     className="text-lg font-black leading-tight cursor-pointer hover:text-blue-400 transition-colors"
-                                    onClick={() => openPlayerModal(player.id)}
+                                    onClick={() => openPlayerModal(player.id, leagueId)}
                                 >
                                     {player.name}
                                 </div>

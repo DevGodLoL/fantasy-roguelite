@@ -52,10 +52,11 @@ export default async function TransactionsPage({
                             <div key={tx.id} className="flex items-center gap-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
                                 {/* Icon/Type */}
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-xl shrink-0 ${tx.type === 'ADD' ? 'bg-green-900/50 text-green-400 border border-green-500/30' :
-                                        tx.type === 'DROP' ? 'bg-red-900/50 text-red-400 border border-red-500/30' :
+                                    tx.type === 'DROP' ? 'bg-red-900/50 text-red-400 border border-red-500/30' :
+                                        tx.type === 'TRAIT_GAINED' ? 'bg-purple-900/50 text-purple-400 border border-purple-500/30' :
                                             'bg-zinc-800 text-zinc-400'
                                     }`}>
-                                    {tx.type === 'ADD' ? '+' : tx.type === 'DROP' ? '-' : '?'}
+                                    {tx.type === 'ADD' ? '+' : tx.type === 'DROP' ? '-' : tx.type === 'TRAIT_GAINED' ? '★' : '?'}
                                 </div>
 
                                 {/* Details */}

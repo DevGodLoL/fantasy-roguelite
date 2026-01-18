@@ -129,7 +129,7 @@ export default function RosterManager({ leagueId, teamId, slots, readOnly = fals
                                                 className={`font-bold hover:underline cursor-pointer z-20 relative ${isSelected ? 'text-purple-300' : 'text-zinc-100'}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    openPlayerModal(slot.player!.id);
+                                                    openPlayerModal(slot.player!.id, leagueId);
                                                 }}
                                             >
                                                 {slot.player.name}

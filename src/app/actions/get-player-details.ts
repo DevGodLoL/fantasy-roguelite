@@ -13,9 +13,10 @@ export interface PlayerDetails {
     average: number;
     ownerName: string | null;
     nextMatchup: { week: number; opponent: string } | null;
+    traits: { code: string; name: string; description: string; rarity: string; kind: string; value: number }[];
 }
 
-export async function getPlayerDetails(playerId: string): Promise<PlayerDetails | null> {
+export async function getPlayerDetails(playerId: string, leagueId?: string): Promise<PlayerDetails | null> {
     const player = await db.player.findUnique({
         where: { id: playerId },
         include: {
@@ -27,14 +28,17 @@ export async function getPlayerDetails(playerId: string): Promise<PlayerDetails 
                 include: {
                     team: true
                 }
-            }
+            },
+            traits: leagueId ? {
+                where: { leagueId }
+            } : false
         }
     });
 
     if (!player) return null;
 
     // Calculate Stats
-    // @ts-ignore - Prisma types sometimes struggle with complex includes in reducer
+    // @ts-ignore
     const totalPoints = player.performances.reduce((sum: number, p: any) => sum + p.points, 0);
     const average = player.performances.length > 0 ? totalPoints / player.performances.length : 0;
 
@@ -45,15 +49,12 @@ export async function getPlayerDetails(playerId: string): Promise<PlayerDetails 
     // Next Matchup
     let nextMatchup = null;
     if (activeSlot) {
-        // Find next scheduled matchup for this team
         const match = await db.matchup.findFirst({
             where: {
                 OR: [
                     { homeTeamId: activeSlot.teamId },
                     { awayTeamId: activeSlot.teamId }
                 ],
-                // For "Upcoming", we want future weeks. Assuming scheduled status implies future.
-                // But simplified: Just find the first scheduled one.
                 status: "scheduled"
             },
             orderBy: { week: { number: "asc" } },
@@ -88,6 +89,17 @@ export async function getPlayerDetails(playerId: string): Promise<PlayerDetails 
         }
     }));
 
+    // Format Traits
+    // @ts-ignore
+    const traits = player.traits ? player.traits.map(t => ({
+        code: t.code,
+        name: t.name,
+        description: t.description,
+        rarity: t.rarity,
+        kind: t.kind,
+        value: t.value
+    })) : [];
+
     return {
         id: player.id,
         name: player.name,
@@ -98,6 +110,7 @@ export async function getPlayerDetails(playerId: string): Promise<PlayerDetails 
         seasonTotal: parseFloat(totalPoints.toFixed(2)),
         average: parseFloat(average.toFixed(2)),
         ownerName,
-        nextMatchup
+        nextMatchup,
+        traits
     };
 }

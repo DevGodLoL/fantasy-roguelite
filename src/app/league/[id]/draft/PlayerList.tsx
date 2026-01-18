@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePlayerModal } from "@/context/PlayerModalContext";
 
 interface Player {
     id: string;
@@ -14,6 +15,7 @@ interface PlayerListProps {
     players: Player[];
     canDraft: boolean;
     onDraft: (playerId: string) => void;
+    leagueId: string;
 }
 
 const posColors: Record<string, string> = {
@@ -27,10 +29,11 @@ const posColors: Record<string, string> = {
 
 type SortOption = "adp" | "name" | "position";
 
-export default function PlayerList({ players, canDraft, onDraft }: PlayerListProps) {
+export default function PlayerList({ players, canDraft, onDraft, leagueId }: PlayerListProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [positionFilter, setPositionFilter] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortOption>("adp");
+    const { openPlayerModal } = usePlayerModal();
 
     // Filter players based on search and position
     const filteredPlayers = players
@@ -74,8 +77,8 @@ export default function PlayerList({ players, canDraft, onDraft }: PlayerListPro
                     <button
                         onClick={() => setPositionFilter(null)}
                         className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all ${positionFilter === null
-                                ? "bg-white/20 text-white"
-                                : "bg-white/5 text-zinc-500 hover:bg-white/10"
+                            ? "bg-white/20 text-white"
+                            : "bg-white/5 text-zinc-500 hover:bg-white/10"
                             }`}
                     >
                         All
@@ -85,8 +88,8 @@ export default function PlayerList({ players, canDraft, onDraft }: PlayerListPro
                             key={pos}
                             onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
                             className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all ${positionFilter === pos
-                                    ? posColors[pos] || "bg-white/20 text-white"
-                                    : "bg-white/5 text-zinc-500 hover:bg-white/10"
+                                ? posColors[pos] || "bg-white/20 text-white"
+                                : "bg-white/5 text-zinc-500 hover:bg-white/10"
                                 }`}
                         >
                             {pos}
@@ -142,14 +145,19 @@ export default function PlayerList({ players, canDraft, onDraft }: PlayerListPro
                             <div className="flex items-center gap-2 min-w-0">
                                 {/* ADP Rank Badge */}
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${player.adp <= 12 ? "bg-amber-500/20 text-amber-400" :
-                                        player.adp <= 36 ? "bg-blue-500/20 text-blue-400" :
-                                            player.adp <= 72 ? "bg-purple-500/20 text-purple-400" :
-                                                "bg-zinc-800 text-zinc-500"
+                                    player.adp <= 36 ? "bg-blue-500/20 text-blue-400" :
+                                        player.adp <= 72 ? "bg-purple-500/20 text-purple-400" :
+                                            "bg-zinc-800 text-zinc-500"
                                     }`}>
                                     {Math.round(player.adp)}
                                 </div>
                                 <div className="min-w-0">
-                                    <div className="font-bold text-xs truncate">{player.name}</div>
+                                    <div
+                                        className="font-bold text-xs truncate cursor-pointer hover:underline hover:text-blue-400 decoration-blue-500/50"
+                                        onClick={() => openPlayerModal(player.id, leagueId)}
+                                    >
+                                        {player.name}
+                                    </div>
                                     <div className="text-[9px] text-zinc-500 font-mono">
                                         <span className={posColors[player.position]?.split(" ")[0] || "text-zinc-400"}>
                                             {player.position}

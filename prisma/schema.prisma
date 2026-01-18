@@ -168,6 +168,28 @@ model Player {
   waiverClaims WaiverClaim[] @relation("PlayerToAdd")
   dropClaims   WaiverClaim[] @relation("PlayerToDrop")
   performances PlayerPerformance[]
+  traits       PlayerTrait[]
+  leagueTransactions LeagueTransaction[]
+}
+
+model PlayerTrait {
+  id          String   @id @default(cuid())
+  playerId    String
+  leagueId    String
+  code        String   
+  name        String
+  description String
+  rarity      String   @default("common") // common, rare, epic, legendary, curse
+  kind        String   // multiplier, bonus_flat
+  value       Float    
+  expiresAtWeek Int? 
+
+  createdAt   DateTime @default(now())
+
+  player Player @relation(fields: [playerId], references: [id])
+  league League @relation(fields: [leagueId], references: [id])
+
+  @@index([leagueId, playerId])
 }
 
 model PlayerPerformance {
