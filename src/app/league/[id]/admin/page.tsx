@@ -62,6 +62,7 @@ export default async function AdminPage({
                     currentWeekNumber={currentWeekNumber}
                     totalWeeks={league.weeks.length}
                     isSeasonOver={isSeasonOver}
+                    debugMatchups={activeWeek ? activeWeek.matchups : []}
                 />
             </main>
         </div>

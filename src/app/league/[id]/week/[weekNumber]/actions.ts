@@ -444,19 +444,21 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
             awayTotal = (awayTotal * awayMultiplier) + awayBonus;
 
             // Update Matchup
-            transactions.push(
-                db.matchup.update({
-                    where: { id: matchup.id },
-                    data: {
-                        homeScore: parseFloat(Math.max(0, homeTotal).toFixed(2)),
-                        awayScore: parseFloat(Math.max(0, awayTotal).toFixed(2)),
-                        status: "final",
-                    },
-                })
-            );
+            await db.matchup.update({
+                where: { id: matchup.id },
+                data: {
+                    homeScore: parseFloat(Math.max(0, homeTotal).toFixed(2)),
+                    awayScore: parseFloat(Math.max(0, awayTotal).toFixed(2)),
+                    status: "final",
+                },
+            });
         }
 
         console.log(`Executing ${transactions.length} transactions`);
+        console.log(`Executing ${transactions.length} transactions`);
+        if (transactions.length === 0) {
+            return { success: false, error: "No transactions generated. Matchup count: " + week.matchups.length };
+        }
         await db.$transaction(transactions);
 
         revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
@@ -465,7 +467,7 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
         revalidatePath(`/league/${leagueId}/transactions`);
         revalidatePath(`/league/${leagueId}/admin`);
 
-        return { success: true };
+        return { success: true, matchupsProcessed: week.matchups.length };
     } catch (e: any) {
         console.error("Simulation failed:", e);
         return { success: false, error: e.message || "Unknown error" };

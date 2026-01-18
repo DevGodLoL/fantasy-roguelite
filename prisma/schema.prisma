@@ -32,13 +32,15 @@ model League {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner    User            @relation(fields: [ownerId], references: [id])
-  members  LeagueMember[]
-  teams    Team[]
-  settings LeagueSettings?
-  weeks    Week[]
-  draft    Draft?
-  matchups Matchup[]
+  owner        User            @relation(fields: [ownerId], references: [id])
+  members      LeagueMember[]
+  teams        Team[]
+  settings     LeagueSettings?
+  weeks        Week[]
+  draft        Draft?
+  matchups     Matchup[]
+  playerTraits PlayerTrait[]
+  transactions LeagueTransaction[]
 }
 
 model LeagueMember {
@@ -99,6 +101,7 @@ model Team {
   waiverPriority Int                @default(1)
   faabBalance    Int                @default(100)
   waiverClaims   WaiverClaim[]
+  transactions   LeagueTransaction[]
 
   @@unique([leagueId, ownerId])
 }

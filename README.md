@@ -2,9 +2,9 @@
 
 A next-generation fantasy football web application with roguelite mechanics. Build your dynasty, draft real NFL players, compete on the waiver wire, and unleash powerful artifacts to dominate your league.
 
-![Draft Room Preview](https://img.shields.io/badge/Status-In%20Development-blue)
+![Status](https://img.shields.io/badge/Status-Alpha-orange)
 ![Next.js](https://img.shields.io/badge/Next.js-16.1-black)
-![Prisma](https://img.shields.io/badge/Prisma-7.2-blue)
+![Prisma](https://img.shields.io/badge/Prisma-5.22-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 
 ---
@@ -16,6 +16,7 @@ A next-generation fantasy football web application with roguelite mechanics. Bui
 - Snake draft logic (order reverses each round)
 - Live draft history and team pick order visualization
 - 110+ real 2025-2026 NFL players ready to be drafted
+- Mock draft automation for testing
 
 ### 💰 FAAB Waiver Wire
 - **Free Agent Acquisition Budget** system ($100 per team)
@@ -26,9 +27,37 @@ A next-generation fantasy football web application with roguelite mechanics. Bui
 
 ### 🃏 Roguelite Powerup System
 - Collectible artifacts that modify gameplay
-- Multipliers, bonus points, and curses
-- Weekly activation during matchups
-- Rarity tiers: Common, Rare, Epic, Legendary
+- Weekly card pack selection (pick 1 of 4 offered powerups)
+- Multipliers, bonus points, and opponent curses
+- Rarity-weighted drops: Common (70%), Rare (20%), Epic (9%), Legendary (1%)
+- Self-targeting and opponent-targeting effects
+
+### ⚔️ Weekly Matchup Simulator
+- Full game simulation engine with realistic stat generation
+- Position-based scoring (QB yards, RB rushing, WR receiving, etc.)
+- Powerup effects applied during matchups (multipliers, bonuses, curses)
+- Fumble tracking with "Curse of the Fumble" penalty support
+- Automatic score calculation and matchup finalization
+
+### 🧬 Player Trait Mutations
+- Dynamic trait system based on player performance
+- **Positive Traits**: Hot Hand (+10%), Genius (+15%), Clutch (+5pts), Legendary Aura (+2pts permanent)
+- **Negative Traits**: Cold Streak (-10%), Shook (-20%), Vulnerable (-3pts)
+- Traits expire after N weeks or persist permanently (Legendary)
+- Mutation chance increases with extreme performances
+
+### 🛡️ Admin Dashboard
+- Commissioner controls for league management
+- "Force Advance Week" button with two-step confirmation
+- Real-time week status and matchup debugging
+- Season completion detection
+
+### 📊 League Views
+- **Standings**: Live W-L-T records, Points For/Against, Streak tracking
+- **Schedule**: Week-by-week matchup overview with scores and status
+- **Team Management**: Lineup swaps, roster moves, player cards
+- **Activity Feed**: League transaction log (adds, drops, traits gained)
+- **Artifacts Inventory**: View collected powerups and their effects
 
 ### 🏟️ Real NFL Rosters (2025-2026)
 **Quarterbacks**: Josh Allen, Lamar Jackson, Patrick Mahomes, Jalen Hurts, C.J. Stroud, and 15 more  
@@ -42,7 +71,7 @@ A next-generation fantasy football web application with roguelite mechanics. Bui
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ (recommended: v24)
+- Node.js 18+ (recommended: v22+)
 - npm or yarn
 
 ### Installation
@@ -58,8 +87,8 @@ npm install
 # Generate Prisma Client
 npm run prisma:generate
 
-# Run database migrations
-npm run prisma:migrate
+# Push database schema (creates SQLite DB)
+npm run prisma:push
 
 # Seed the database with NFL players and demo data
 npm run seed
@@ -77,22 +106,31 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 ```
 fantasy-roguelite/
 ├── prisma/
-│   ├── schema.prisma      # Database schema
-│   ├── seed.ts            # NFL player seeding script
-│   └── migrations/        # Database migrations
+│   ├── schema.prisma      # Database schema (30+ models)
+│   ├── seed.ts            # NFL player + powerup seeding
+│   └── dev.db             # SQLite database
+├── scripts/
+│   ├── run-mock-draft.ts  # Automated draft testing
+│   └── verify-powerups.ts # Powerup engine validation
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx       # Home page
 │   │   ├── leagues/       # League listing
 │   │   └── league/[id]/
-│   │       ├── page.tsx   # League dashboard
-│   │       ├── draft/     # Draft room
-│   │       ├── team/      # Team management
-│   │       └── waivers/   # Waiver wire marketplace
+│   │       ├── page.tsx        # League dashboard + standings
+│   │       ├── admin/          # Commissioner controls
+│   │       ├── draft/          # Draft room
+│   │       ├── schedule/       # Season schedule
+│   │       ├── team/[teamId]/  # Team management
+│   │       ├── week/[num]/     # Weekly matchup view
+│   │       ├── waivers/        # Waiver wire
+│   │       ├── inventory/      # Artifacts collection
+│   │       └── transactions/   # Activity log
+│   ├── generated/
+│   │   └── client/        # Prisma generated client
 │   └── lib/
-│       └── prisma.ts      # Database client
-├── dev.db                 # SQLite database (local)
-└── prisma.config.ts       # Prisma configuration
+│       └── prisma.ts      # Database singleton
+└── prisma.config.ts       # Prisma Windows configuration
 ```
 
 ---
@@ -101,11 +139,11 @@ fantasy-roguelite/
 
 | Technology | Purpose |
 |------------|---------|
-| **Next.js 16** | React framework with App Router |
-| **Prisma 7** | Type-safe ORM |
-| **Better-SQLite3** | Fast local database |
-| **TypeScript 5** | Type safety |
-| **Tailwind CSS 4** | Styling |
+| **Next.js 16** | React framework with App Router & Server Actions |
+| **Prisma 5.22** | Type-safe ORM with SQLite |
+| **Better-SQLite3** | Fast embedded database |
+| **TypeScript 5** | Full type safety |
+| **Tailwind CSS 4** | Modern utility-first styling |
 
 ---
 
@@ -113,11 +151,11 @@ fantasy-roguelite/
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
+| `npm run dev` | Start development server (Turbopack) |
 | `npm run build` | Build for production |
-| `npm run seed` | Reset database with NFL players |
+| `npm run seed` | Reset database with NFL players + demo league |
 | `npm run prisma:generate` | Regenerate Prisma Client |
-| `npm run prisma:migrate` | Apply database migrations |
+| `npm run prisma:push` | Push schema to database |
 | `npm run prisma:studio` | Open Prisma Studio (database GUI) |
 | `npm run db:check` | Full database health check |
 | `npm run verify` | Validate powerup scoring engine |
@@ -135,51 +173,90 @@ fantasy-roguelite/
 3. **Build Your Roster**  
    Draft strategically across 15 rounds: QB, RB, WR, TE, FLEX, DST, K, and bench spots.
 
-4. **Hit the Waiver Wire**  
-   After the draft, use your $100 FAAB budget to bid on undrafted players.
+4. **Manage Your Lineup**  
+   Set your starting lineup each week. Swap players between starter slots and bench.
 
-5. **Activate Powerups**  
-   Use roguelite artifacts to boost your weekly scores or curse your opponents.
+5. **Open Your Card Pack**  
+   Each week, open a pack of 4 random powerups and choose 1 to add to your arsenal.
+
+6. **Hit the Waiver Wire**  
+   Use your $100 FAAB budget to bid on undrafted players and improve your team.
+
+7. **Watch the Simulation**  
+   Commissioners can advance weeks via the Admin Dashboard. Scores are generated based on player stats and powerup effects.
+
+8. **Track Your Progress**  
+   View standings, check your streak, and watch players gain traits based on performance!
 
 ---
 
 ## 🗃️ Database Models
 
-- **User** - Player accounts
-- **League** - Fantasy leagues with settings
-- **Team** - User teams with FAAB balance and waiver priority
-- **Player** - Real NFL players (110+ seeded)
-- **RosterSlot** - Team roster positions
-- **Draft** - Draft state and format
-- **DraftPick** - Individual draft selections
-- **WaiverClaim** - FAAB bids on free agents
-- **Powerup** - Roguelite artifact definitions
-- **Matchup** - Weekly head-to-head matchups
+| Model | Description |
+|-------|-------------|
+| **User** | Player accounts |
+| **League** | Fantasy leagues with settings |
+| **Team** | User teams with FAAB balance and waiver priority |
+| **Player** | Real NFL players (110+ seeded) |
+| **PlayerTrait** | Dynamic mutations based on performance |
+| **PlayerPerformance** | Weekly stat tracking |
+| **RosterSlot** | Team roster positions |
+| **Draft / DraftPick** | Draft state and selections |
+| **Week / Matchup** | Season structure and head-to-head games |
+| **WaiverClaim** | FAAB bids on free agents |
+| **Powerup** | Roguelite artifact definitions |
+| **TeamPowerup** | Owned powerups |
+| **TeamPowerupOffer** | Weekly pack contents |
+| **LeagueTransaction** | Activity log entries |
 
 ---
 
 ## 🪟 Windows Notes
 
-This project uses **Prisma v7** with **Better-SQLite3**. For Windows stability:
+This project uses **Prisma v5** with **Better-SQLite3**. For Windows stability:
 
-1. `prisma.config.ts` resolves `DATABASE_URL` to absolute paths
-2. All scripts ensure clean database disconnects
-3. Use `npm run db:check` to verify database health
+1. `prisma.config.ts` resolves `DATABASE_URL` to absolute Windows-safe paths
+2. Prisma Client output is set to `./src/generated/client`
+3. All scripts ensure clean database disconnects
+4. Use `npm run db:check` to verify database health
+
+If you encounter issues:
+```bash
+# Clear and regenerate
+rm -rf node_modules/.prisma src/generated
+npm run prisma:generate
+npm run prisma:push
+```
 
 ---
 
 ## 🗺️ Roadmap
 
+### ✅ Completed
 - [x] 10-team snake draft system
 - [x] FAAB waiver wire with blind bidding
 - [x] Real 2025-2026 NFL rosters
 - [x] Roguelite powerup engine
-- [ ] Weekly matchup simulator
-- [ ] Live scoring with stat ingestion
-- [ ] Season schedule generator
-- [ ] Playoff bracket system
+- [x] Weekly matchup simulator with stat generation
+- [x] Player trait mutation system
+- [x] 14-week season schedule generator
+- [x] Admin Dashboard with week advancement
+- [x] Standings with W-L-T, PF/PA, streaks
+- [x] Card pack selection (pick 1 of 4)
+- [x] League activity feed
+
+### 🚧 In Progress
+- [ ] Lineup lock before game simulation
+- [ ] Enhanced player cards with trait display
+- [ ] Matchup preview with projected scores
+
+### 📋 Planned
+- [ ] Playoff bracket system (Weeks 15-17)
 - [ ] Trade system between teams
-- [ ] Mobile-responsive design
+- [ ] Live stat ingestion from real NFL API
+- [ ] Mobile-responsive design overhaul
+- [ ] User authentication (NextAuth)
+- [ ] Multi-league support per user
 
 ---
 
@@ -195,4 +272,5 @@ Contributions are welcome! Please open an issue or submit a pull request.
 
 ---
 
-Built with ⚡ by the Fantasy Roguelite Team
+Built with ⚡ by the Fantasy Roguelite Team  
+*Last updated: January 2026*

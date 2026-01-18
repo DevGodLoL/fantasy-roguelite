@@ -9,21 +9,27 @@ interface AdminDashboardProps {
     currentWeekNumber: number;
     totalWeeks: number;
     isSeasonOver: boolean;
+    debugMatchups: any[];
 }
 
-export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks, isSeasonOver }: AdminDashboardProps) {
+export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks, isSeasonOver, debugMatchups }: AdminDashboardProps) {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const [isConfirming, setIsConfirming] = useState(false);
 
     const handleAdvance = async () => {
-        if (!confirm(`Are you sure you want to FORCE ADVANCE Week ${currentWeekNumber}?`)) return;
+        if (!isConfirming) {
+            setIsConfirming(true);
+            return;
+        }
 
         setIsLoading(true);
+        setIsConfirming(false);
         try {
             const result = await simulateWeek(leagueId, currentWeekNumber);
             if (result.success) {
-                alert(`Week ${currentWeekNumber} simulated successfully!`);
-                router.refresh();
+                alert(`Success! Processed ${(result as any).matchupsProcessed} matchups.`);
+                window.location.reload();
             } else {
                 alert(`Error: ${result.error}`);
             }
@@ -56,13 +62,16 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
                 <div className="flex gap-4">
                     <button
                         onClick={handleAdvance}
+                        onMouseLeave={() => setIsConfirming(false)} // Reset if they mouse away
                         disabled={isLoading || isSeasonOver}
                         className={`flex-1 py-4 rounded-xl font-black uppercase tracking-widest transition-all ${isLoading || isSeasonOver
-                                ? "bg-zinc-800 text-zinc-600 cursor-not-allowed"
+                            ? "bg-zinc-800 text-zinc-600 cursor-not-allowed"
+                            : isConfirming
+                                ? "bg-red-700 text-white animate-pulse"
                                 : "bg-red-600 hover:bg-red-500 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]"
                             }`}
                     >
-                        {isLoading ? "Simulating..." : isSeasonOver ? "Season Over" : `Force Advance Week ${currentWeekNumber}`}
+                        {isLoading ? "Simulating..." : isSeasonOver ? "Season Over" : isConfirming ? "ARE YOU SURE? CLICK TO CONFIRM" : `Force Advance Week ${currentWeekNumber}`}
                     </button>
                 </div>
                 <p className="mt-4 text-xs text-zinc-500 text-center">
@@ -88,6 +97,13 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
             <p className="text-center text-[10px] text-zinc-700 uppercase tracking-widest">
                 Commissioner Access Only • Authorized Personnel
             </p>
+
+            <div className="p-4 bg-black border border-zinc-800 font-mono text-xs text-zinc-500">
+                <h4 className="font-bold text-zinc-400 mb-2">DEBUG: Matchup Statuses</h4>
+                {debugMatchups?.map(m => (
+                    <div key={m.id}>{m.id.slice(0, 8)}... : {m.status}</div>
+                ))}
+            </div>
         </div>
     );
 }
