@@ -39,7 +39,7 @@ export default async function WeekPage({
                                         },
                                     },
                                 },
-                                orderBy: { slotType: "asc" }, // This is usually overridden by client sorting
+                                orderBy: { slotType: "asc" },
                             },
                         },
                     },
@@ -150,175 +150,243 @@ export default async function WeekPage({
     const isFinal = userMatchup?.status === "final";
     const isScheduled = userMatchup?.status === "scheduled";
 
-    return (
-        <div className="min-h-screen bg-[#020202] text-white font-sans">
-            {/* Header */}
-            <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-zinc-950/50 backdrop-blur-xl sticky top-0 z-20">
-                <div className="flex items-center gap-4">
-                    <Link
-                        href={`/league/${leagueId}/schedule`}
-                        className="text-zinc-500 hover:text-white transition-colors"
-                    >
-                        ← Schedule
-                    </Link>
-                    <div className="h-4 w-px bg-white/10" />
-                    <h1 className="font-black uppercase tracking-tighter text-xl">
-                        Week {weekNum}
-                    </h1>
-                    <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full ${isFinal
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : isLive
-                                ? "bg-yellow-500/20 text-yellow-400 animate-pulse"
-                                : "bg-zinc-800 text-zinc-400"
-                            }`}
-                    >
-                        {isFinal ? "FINAL" : isLive ? "LIVE" : "SCHEDULED"}
-                    </span>
-                </div>
+    // Win/Loss display logic
+    const userWon = isFinal && (userScore || 0) > (oppScore || 0);
+    const userLost = isFinal && (userScore || 0) < (oppScore || 0);
+    const isTie = isFinal && (userScore || 0) === (oppScore || 0) && userScore !== null;
 
-                <div className="flex items-center gap-3">
-                    {/* Week Navigation */}
-                    <div className="flex items-center gap-1 bg-zinc-900/50 rounded-full p-1">
-                        {allWeeks.slice(0, 18).map((w) => (
-                            <Link
-                                key={w.id}
-                                href={`/league/${leagueId}/week/${w.number}`}
-                                className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold transition-all ${w.number === weekNum
-                                    ? "bg-blue-600 text-white"
-                                    : w.matchups[0]?.status === "final"
-                                        ? "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                                        : "text-zinc-500 hover:text-white"
+    return (
+        <div className="min-h-screen bg-[#030303] text-white font-sans selection:bg-purple-500/30">
+            {/* Animated Background */}
+            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[5%] left-[10%] w-[45%] h-[45%] bg-purple-900/8 blur-[150px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[15%] right-[5%] w-[35%] h-[35%] bg-blue-900/8 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: "1s" }} />
+
+                {/* Subtle grid overlay */}
+                <div
+                    className="absolute inset-0 opacity-[0.015]"
+                    style={{
+                        backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                        backgroundSize: '60px 60px',
+                    }}
+                />
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* STICKY HEADER - BATTLE COMMAND */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            <header className="sticky top-0 z-30 h-16 border-b border-white/10 bg-black/60 backdrop-blur-xl shrink-0">
+                <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full">
+                    <div className="flex items-center gap-4">
+                        <Link
+                            href={`/league/${leagueId}/schedule`}
+                            className="text-zinc-500 hover:text-purple-400 transition-colors text-sm font-medium flex items-center gap-2 group"
+                        >
+                            <span className="group-hover:-translate-x-1 transition-transform">←</span>
+                            Campaign Map
+                        </Link>
+                        <div className="h-6 w-px bg-white/10" />
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl">⚔️</span>
+                            <h1 className="font-black uppercase tracking-tighter text-xl bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+                                Chapter {weekNum}
+                            </h1>
+                            <span
+                                className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border ${isFinal
+                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                        : isLive
+                                            ? "bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse"
+                                            : "bg-zinc-800/50 text-zinc-500 border-zinc-700/50"
                                     }`}
                             >
-                                {w.number}
-                            </Link>
-                        ))}
+                                {isFinal ? "Conquered" : isLive ? "In Battle" : "Approaching"}
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Simulate Button */}
-                    {isScheduled && (
-                        <form
-                            action={async () => {
-                                "use server";
-                                await simulateWeek(leagueId, weekNum);
-                            }}
-                        >
-                            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-full transition-all">
-                                ⚡ Simulate Week
-                            </button>
-                        </form>
-                    )}
+                    <div className="flex items-center gap-4">
+                        {/* Week Navigation */}
+                        <div className="hidden md:flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/5">
+                            {allWeeks.slice(0, 14).map((w) => (
+                                <Link
+                                    key={w.id}
+                                    href={`/league/${leagueId}/week/${w.number}`}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-black transition-all ${w.number === weekNum
+                                            ? "bg-purple-600 text-white shadow-[0_0_10px_rgba(147,51,234,0.4)]"
+                                            : w.matchups[0]?.status === "final"
+                                                ? "bg-zinc-800/50 text-zinc-400 hover:text-white"
+                                                : "text-zinc-600 hover:text-zinc-300"
+                                        }`}
+                                >
+                                    {w.number}
+                                </Link>
+                            ))}
+                        </div>
 
-                    {isFinal && weekNum < allWeeks.length && (
-                        <Link
-                            href={`/league/${leagueId}/week/${weekNum + 1}`}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-full transition-all"
-                        >
-                            Next Week →
-                        </Link>
-                    )}
+                        {/* Simulate Button */}
+                        {isScheduled && (
+                            <form
+                                action={async () => {
+                                    "use server";
+                                    await simulateWeek(leagueId, weekNum);
+                                }}
+                            >
+                                <button className="px-5 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black text-xs uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                                    ⚡ Resolve Battle
+                                </button>
+                            </form>
+                        )}
+
+                        {isFinal && weekNum < allWeeks.length && (
+                            <Link
+                                href={`/league/${leagueId}/week/${weekNum + 1}`}
+                                className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                            >
+                                Next Chapter →
+                            </Link>
+                        )}
+                    </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto p-6">
-                {/* ROGUELITE SECTION */}
-                {userTeam && (
-                    <>
-                        {/* 1. Show Active Powerup if exists (Always show, even if final) */}
-                        {activePowerup && (
-                            <div className="mb-8 p-6 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border border-blue-500/30 rounded-3xl flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-2xl border border-blue-500/50">
-                                        ⚡
+            <main className="relative z-10 max-w-7xl mx-auto p-6 lg:p-12 space-y-10">
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                {/* BATTLE RESULT / POWERUP SECTION */}
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                <section className="space-y-6">
+                    {userTeam && (
+                        <>
+                            {/* 1. Show Active Powerup */}
+                            {activePowerup && (
+                                <div className="p-6 bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-[0_0_40px_rgba(147,51,234,0.1)] relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(147,51,234,0.3)]">
+                                            ✨
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] font-black uppercase text-purple-400 tracking-[.2em] mb-1">Enchanted Artifact Active</div>
+                                            <h3 className="text-2xl font-black text-white">{activePowerup.powerup.name}</h3>
+                                            <p className="text-sm text-zinc-400 max-w-xl">{activePowerup.powerup.description}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase text-blue-400 tracking-wider">Active Artifact</div>
-                                        <div className="text-xl font-bold">{activePowerup.powerup.name}</div>
-                                        <div className="text-sm text-blue-200/60">{activePowerup.powerup.description}</div>
+
+                                    <div className="flex flex-col items-end gap-1">
+                                        <div className="text-[10px] uppercase font-bold text-zinc-600 tracking-widest text-right w-full">Current State</div>
+                                        <div className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border ${activePowerup.isConsumed
+                                                ? "bg-zinc-800 text-zinc-500 border-zinc-700"
+                                                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 animate-pulse"
+                                            }`}>
+                                            {activePowerup.isConsumed ? "Energy Depleted" : "Empowerment Active"}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <div className="text-[10px] uppercase font-bold text-white/30">Status</div>
-                                    <div className={`text-sm font-bold ${activePowerup.isConsumed ? "text-zinc-500" : "text-emerald-400"}`}>
-                                        {activePowerup.isConsumed ? "CONSUMED" : "READY"}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* 2. Show Pack Opening if offers exist (Only if NOT final) */}
-                        {!isFinal && !activePowerup && powerupOffers.length > 0 && (
-                            <PackOpening
-                                leagueId={leagueId}
-                                teamId={userTeam.id}
-                                weekId={week.id}
-                                weekNumber={weekNum}
-                                offers={powerupOffers}
-                            />
-                        )}
+                            {/* 2. Show Pack Opening if offers exist (Only if NOT final) */}
+                            {!isFinal && !activePowerup && powerupOffers.length > 0 && (
+                                <PackOpening
+                                    leagueId={leagueId}
+                                    teamId={userTeam.id}
+                                    weekId={week.id}
+                                    weekNumber={weekNum}
+                                    offers={powerupOffers}
+                                />
+                            )}
 
-                        {/* 3. Show Open Button if nothing active and no offers (Only if NOT final) */}
-                        {!isFinal && !activePowerup && powerupOffers.length === 0 && (
-                            <OpenPackButton
-                                leagueId={leagueId}
-                                teamId={userTeam.id}
-                                weekId={week.id}
-                            />
-                        )}
-                    </>
-                )}
+                            {/* 3. Show Open Button if nothing active and no offers (Only if NOT final) */}
+                            {!isFinal && !activePowerup && powerupOffers.length === 0 && (
+                                <OpenPackButton
+                                    leagueId={leagueId}
+                                    teamId={userTeam.id}
+                                    weekId={week.id}
+                                />
+                            )}
+                        </>
+                    )}
 
-                {/* Matchup Header */}
-                {userMatchup && userTeam && oppTeam && (
-                    <div className="mb-8">
-                        {/* Score Banner */}
-                        <div className="bg-gradient-to-r from-emerald-500/10 via-zinc-900/80 to-blue-500/10 rounded-3xl p-8 border border-white/5">
-                            <div className="flex items-center justify-between">
-                                {/* User Team */}
-                                <div className="flex-1 text-center">
-                                    <div className="text-xs font-bold text-emerald-400 uppercase mb-2">
-                                        Your Team
-                                    </div>
-                                    <div className="text-2xl font-black mb-2">
-                                        {userTeam.name}
-                                    </div>
-                                    <div
-                                        className={`text-6xl font-black ${isFinal
-                                            ? (userScore || 0) > (oppScore || 0)
-                                                ? "text-emerald-400"
-                                                : (userScore || 0) < (oppScore || 0)
-                                                    ? "text-red-400"
-                                                    : "text-zinc-400"
-                                            : "text-zinc-300"
-                                            }`}
-                                    >
-                                        {(userScore || 0).toFixed(1)}
-                                    </div>
-                                </div>
+                    {/* ═══════════════════════════════════════════════════════════════ */}
+                    {/* BATTLE ARENA (VERSUS) */}
+                    {/* ═══════════════════════════════════════════════════════════════ */}
+                    {userMatchup && userTeam && oppTeam && (
+                        <div className="relative">
+                            {/* VS Background Glow */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-blue-500/10 blur-3xl -z-10" />
 
-                                <div className="text-zinc-600 font-bold text-xl px-8">VS</div>
+                            <div className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-[2.5rem] p-10 lg:p-16 relative overflow-hidden">
+                                {/* Result Badge */}
+                                {isFinal && (
+                                    <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-8 py-2 rounded-full text-sm font-black uppercase tracking-[.3em] shadow-2xl z-20 ${userWon ? "bg-emerald-500 text-white shadow-emerald-500/20" :
+                                            userLost ? "bg-red-500 text-white shadow-red-500/20" :
+                                                "bg-zinc-700 text-white"
+                                        }`}>
+                                        {userWon ? "👑 VICTORY" : userLost ? "💀 DEFEAT" : "⚖️ STALEMATE"}
+                                    </div>
+                                )}
 
-                                {/* Opponent Team */}
-                                <div className="flex-1 text-center">
-                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-2">
-                                        Opponent
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                                    {/* User Team Hand */}
+                                    <div className={`flex-1 flex flex-col items-center gap-6 transition-all duration-500 ${userLost ? 'grayscale opacity-50 contrast-75' : 'scale-110'}`}>
+                                        <div className="relative">
+                                            <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-[2rem] bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-4xl sm:text-6xl font-black shadow-[0_0_50px_rgba(147,51,234,0.3)] border-2 border-white/10`}>
+                                                {userTeam.name.charAt(0)}
+                                            </div>
+                                            {userWon && <div className="absolute -top-4 -right-4 text-4xl animate-bounce">👑</div>}
+                                        </div>
+                                        <div className="text-center space-y-1">
+                                            <div className="text-[10px] font-black text-purple-400 uppercase tracking-[.3em]">Your Legion</div>
+                                            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">{userTeam.name}</h2>
+                                        </div>
+                                        <div className={`text-6xl sm:text-8xl font-black tracking-tighter transition-all ${userWon ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'text-zinc-200'}`}>
+                                            {(userScore || 0).toFixed(1)}
+                                        </div>
                                     </div>
-                                    <div className="text-2xl font-black mb-2 text-zinc-400">
-                                        {oppTeam.name}
+
+                                    {/* VS Splatter */}
+                                    <div className="relative shrink-0 py-8">
+                                        <div className="text-4xl sm:text-5xl font-black text-zinc-800 italic select-none">VS</div>
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div className="w-1 h-32 bg-gradient-to-b from-transparent via-white/10 to-transparent rotate-12" />
+                                        </div>
                                     </div>
-                                    <div className="text-6xl font-black text-zinc-600">
-                                        {(oppScore || 0).toFixed(1)}
+
+                                    {/* Opponent Team Hand */}
+                                    <div className={`flex-1 flex flex-col items-center gap-6 transition-all duration-500 ${userWon ? 'grayscale opacity-50 contrast-75' : userLost ? 'scale-110' : ''}`}>
+                                        <div className="relative">
+                                            <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-[2rem] bg-zinc-900 flex items-center justify-center text-4xl sm:text-6xl font-black border-2 border-white/5 shadow-inner`}>
+                                                {oppTeam.name.charAt(0)}
+                                            </div>
+                                            {userLost && <div className="absolute -top-4 -right-4 text-4xl animate-bounce">👑</div>}
+                                        </div>
+                                        <div className="text-center space-y-1">
+                                            <div className="text-[10px] font-black text-zinc-500 uppercase tracking-[.3em]">The Enemy</div>
+                                            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-300">{oppTeam.name}</h2>
+                                        </div>
+                                        <div className={`text-6xl sm:text-8xl font-black tracking-tighter transition-all ${userLost ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.3)]' : 'text-zinc-600'}`}>
+                                            {(oppScore || 0).toFixed(1)}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                {/* BATTLE FORMATIONS (LINEUPS) */}
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* User Roster */}
-                    <div>
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <div className="text-2xl">⚔️</div>
+                            <h2 className="text-xs font-black uppercase tracking-[.3em] text-emerald-400">
+                                Your War Formation
+                            </h2>
+                            <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/30 to-transparent" />
+                        </div>
+
                         {userRoster && (
                             <LineupManager
                                 leagueId={leagueId}
@@ -326,12 +394,21 @@ export default async function WeekPage({
                                 starters={userRoster.starters}
                                 bench={userRoster.bench}
                                 isFinal={isFinal}
-                                title={`${userTeam?.name || "Your Lineup"}`}
+                                title={userTeam?.name}
                             />
                         )}
                     </div>
+
                     {/* Opponent Roster */}
-                    <div>
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <div className="text-2xl">🛡️</div>
+                            <h2 className="text-xs font-black uppercase tracking-[.3em] text-red-400">
+                                Opponent Defenses
+                            </h2>
+                            <div className="h-px flex-1 bg-gradient-to-r from-red-500/30 to-transparent" />
+                        </div>
+
                         {oppRoster && (
                             <LineupManager
                                 leagueId={leagueId}
@@ -340,7 +417,7 @@ export default async function WeekPage({
                                 bench={oppRoster.bench}
                                 isFinal={isFinal}
                                 readOnly={true}
-                                title={`${oppTeam?.name || "Opponent"}`}
+                                title={oppTeam?.name}
                             />
                         )}
                     </div>
