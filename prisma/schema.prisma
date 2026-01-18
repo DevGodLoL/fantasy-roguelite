@@ -104,6 +104,7 @@ model Team {
   rerolls        Int                @default(1) // Reroll tokens for pack opening
   waiverClaims   WaiverClaim[]
   transactions   LeagueTransaction[]
+  missions       TeamMission[]
 
   @@unique([leagueId, ownerId])
 }
@@ -121,6 +122,7 @@ model Week {
   powerupOffers  TeamPowerupOffer[]
   teamStats      TeamWeekStats[]
   performances   PlayerPerformance[]
+  missions       TeamMission[]
 
   @@unique([leagueId, number])
 }
@@ -338,4 +340,36 @@ model LeagueTransaction {
   league League @relation(fields: [leagueId], references: [id])
   team   Team   @relation(fields: [teamId], references: [id])
   player Player? @relation(fields: [playerId], references: [id])
+}
+
+// Weekly Missions for roguelite progression
+model TeamMission {
+  id          String   @id @default(cuid())
+  teamId      String
+  weekId      String
+  
+  // Embedded mission definition
+  code        String   // Unique mission type code
+  name        String   // Display name
+  description String   // Human-readable objective
+  
+  // Mission parameters
+  type        String   // "score" | "margin" | "stat" | "player_score"
+  targetPosition String? // For position-based missions (e.g., "RB", "WR")
+  targetValue Float    // Target to achieve
+  
+  // Reward
+  rewardType  String   // "gold" | "rerolls" | "artifact"
+  rewardValue Int      // Amount of reward
+  
+  // Progress tracking
+  progress    Float    @default(0)
+  isCompleted Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  
+  team Team @relation(fields: [teamId], references: [id])
+  week Week @relation(fields: [weekId], references: [id])
+  
+  @@unique([teamId, weekId, code]) // Only one of each mission type per team per week
 }

@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { calculateMissionProgress, BattleResults } from "@/lib/game-data/missions";
 
 // --- TRAIT DEFINITIONS ---
 const TRAIT_DEFINITIONS: Record<string, any> = {
@@ -424,6 +425,8 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
         const processTeam = (team: any) => {
             let total = 0;
             let fumbles = 0;
+            const positionScores: Record<string, number> = {};
+            let highestPlayerScore = 0;
 
             for (const slot of team.rosterSlots) {
                 if (slot.player) {
@@ -465,6 +468,15 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                         }
 
                         total += finalPoints;
+
+                        // Track position scores for missions
+                        const pos = slot.player.position;
+                        positionScores[pos] = (positionScores[pos] || 0) + finalPoints;
+
+                        // Track highest player score
+                        if (finalPoints > highestPlayerScore) {
+                            highestPlayerScore = finalPoints;
+                        }
                     }
                     fumbles += stats.fumbles;
 
@@ -498,7 +510,7 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                     }
                 }
             }
-            return { total, fumbles };
+            return { total, fumbles, positionScores, highestPlayerScore };
         };
 
         for (const matchup of week.matchups) {
@@ -599,6 +611,89 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                     data: { gold: { increment: awayGold } }
                 })
             );
+
+            // --- MISSION EVALUATION ---
+            // Process missions for both teams
+            const evaluateTeamMissions = async (teamId: string, results: BattleResults) => {
+                const missions = await db.teamMission.findMany({
+                    where: { teamId, weekId: week.id, isCompleted: false }
+                });
+
+                for (const mission of missions) {
+                    const { progress, isCompleted } = calculateMissionProgress(
+                        {
+                            code: mission.code,
+                            name: mission.name,
+                            description: mission.description,
+                            type: mission.type as any,
+                            targetPosition: mission.targetPosition || undefined,
+                            targetValue: mission.targetValue,
+                            rewardType: mission.rewardType as any,
+                            rewardValue: mission.rewardValue,
+                            difficulty: 'medium' as any // Not used in calculation
+                        },
+                        results
+                    );
+
+                    // Update mission progress
+                    transactions.push(
+                        db.teamMission.update({
+                            where: { id: mission.id },
+                            data: {
+                                progress,
+                                isCompleted
+                            }
+                        })
+                    );
+
+                    // Grant rewards if completed
+                    if (isCompleted) {
+                        if (mission.rewardType === 'gold') {
+                            transactions.push(
+                                db.team.update({
+                                    where: { id: teamId },
+                                    data: { gold: { increment: mission.rewardValue } }
+                                })
+                            );
+                        } else if (mission.rewardType === 'rerolls') {
+                            transactions.push(
+                                db.team.update({
+                                    where: { id: teamId },
+                                    data: { rerolls: { increment: mission.rewardValue } }
+                                })
+                            );
+                        }
+
+                        // Log the mission completion
+                        transactions.push(
+                            db.leagueTransaction.create({
+                                data: {
+                                    leagueId,
+                                    teamId,
+                                    type: "MISSION_COMPLETE",
+                                    description: `Completed mission: ${mission.name} - Earned ${mission.rewardValue} ${mission.rewardType}`
+                                }
+                            })
+                        );
+                    }
+                }
+            };
+
+            // Evaluate missions for home team
+            await evaluateTeamMissions(matchup.homeTeamId, {
+                totalScore: homeTotal,
+                opponentScore: awayTotal,
+                positionScores: home.positionScores,
+                highestPlayerScore: home.highestPlayerScore
+            });
+
+            // Evaluate missions for away team
+            await evaluateTeamMissions(matchup.awayTeamId, {
+                totalScore: awayTotal,
+                opponentScore: homeTotal,
+                positionScores: away.positionScores,
+                highestPlayerScore: away.highestPlayerScore
+            });
         }
 
         console.log(`Executing ${transactions.length} transactions`);

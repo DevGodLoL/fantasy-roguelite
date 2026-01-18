@@ -5,6 +5,8 @@ import { simulateWeek } from "./actions";
 import LineupManager from "./LineupManager";
 import PackOpening from "./PackOpening";
 import BattleRecap from "./BattleRecap";
+import MissionsPanel from "./MissionsPanel";
+import { selectMissionsForWeek } from "@/lib/game-data/missions";
 
 const USER_TEAM_NAME = "The DevGods";
 
@@ -204,6 +206,44 @@ export default async function WeekPage({
         if (oppTp) opponentPowerup = oppTp;
     }
 
+    // --- WEEKLY MISSIONS ---
+    let userMissions: any[] = [];
+    if (userTeam) {
+        // Check if missions exist for this week
+        const existingMissions = await db.teamMission.findMany({
+            where: { teamId: userTeam.id, weekId: week.id }
+        });
+
+        if (existingMissions.length === 0 && userMatchup?.status !== 'final') {
+            // Generate new missions for this week
+            const missionTemplates = selectMissionsForWeek(3);
+
+            await db.teamMission.createMany({
+                data: missionTemplates.map(m => ({
+                    teamId: userTeam.id,
+                    weekId: week.id,
+                    code: m.code,
+                    name: m.name,
+                    description: m.description,
+                    type: m.type,
+                    targetPosition: m.targetPosition || null,
+                    targetValue: m.targetValue,
+                    rewardType: m.rewardType,
+                    rewardValue: m.rewardValue,
+                    progress: 0,
+                    isCompleted: false
+                }))
+            });
+
+            // Fetch the newly created missions
+            userMissions = await db.teamMission.findMany({
+                where: { teamId: userTeam.id, weekId: week.id }
+            });
+        } else {
+            userMissions = existingMissions;
+        }
+    }
+
     // Organize roster into starters and bench
     const getOrganizedRoster = (
         slots: {
@@ -387,6 +427,13 @@ export default async function WeekPage({
                     )}
 
                     {/* ═══════════════════════════════════════════════════════════════ */}
+                    {/* WEEKLY MISSIONS */}
+                    {/* ═══════════════════════════════════════════════════════════════ */}
+                    {userTeam && userMissions.length > 0 && (
+                        <MissionsPanel missions={userMissions} isFinal={isFinal} />
+                    )}
+
+                    {/* ═══════════════════════════════════════════════════════════════ */}
                     {/* BATTLE ARENA (VERSUS) */}
                     {/* ═══════════════════════════════════════════════════════════════ */}
                     {userMatchup && userTeam && oppTeam && (
@@ -484,19 +531,19 @@ export default async function WeekPage({
                                         {/* Opponent Artifact Badge - Revealed after battle */}
                                         {isFinal && opponentPowerup ? (
                                             <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${opponentPowerup.powerup.rarity === 'legendary'
-                                                    ? 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]'
-                                                    : opponentPowerup.powerup.rarity === 'epic'
-                                                        ? 'bg-purple-500/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
-                                                        : opponentPowerup.powerup.rarity === 'rare'
-                                                            ? 'bg-blue-500/10 border-blue-500/30'
-                                                            : 'bg-zinc-800/50 border-zinc-700'
+                                                ? 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]'
+                                                : opponentPowerup.powerup.rarity === 'epic'
+                                                    ? 'bg-purple-500/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                                                    : opponentPowerup.powerup.rarity === 'rare'
+                                                        ? 'bg-blue-500/10 border-blue-500/30'
+                                                        : 'bg-zinc-800/50 border-zinc-700'
                                                 }`}>
                                                 <span className="text-lg">⚔️</span>
                                                 <div className="text-left">
                                                     <div className={`text-xs font-bold ${opponentPowerup.powerup.rarity === 'legendary' ? 'text-amber-400'
-                                                            : opponentPowerup.powerup.rarity === 'epic' ? 'text-purple-400'
-                                                                : opponentPowerup.powerup.rarity === 'rare' ? 'text-blue-400'
-                                                                    : 'text-zinc-400'
+                                                        : opponentPowerup.powerup.rarity === 'epic' ? 'text-purple-400'
+                                                            : opponentPowerup.powerup.rarity === 'rare' ? 'text-blue-400'
+                                                                : 'text-zinc-400'
                                                         }`}>
                                                         {opponentPowerup.powerup.name}
                                                     </div>
