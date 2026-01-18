@@ -331,23 +331,25 @@ async function main() {
 
   console.log("6) Upserting Powerups...");
   const powerups = [
-    // Production powerups
+    // === LEGENDARY TIER ===
     {
-      code: "XP_BOOST_15",
-      name: "Experience Relic",
-      description: "Multiply this week's total score by 1.15x.",
-      rarity: "rare",
+      code: "INFINITY_GAUNTLET",
+      name: "Infinity Gauntlet",
+      description: "Doubles your entire team's score this week. Ultimate power.",
+      rarity: "legendary",
       kind: "multiplier",
-      value: 1.15,
-    },
-    {
-      code: "PASS_TD_BONUS_2",
-      name: "Quarterback's Tome",
-      description: "Earn +2 points for every Passing TD this week.",
-      rarity: "common",
-      kind: "bonus_points",
       value: 2.0,
     },
+    {
+      code: "PHOENIX_REBIRTH",
+      name: "Phoenix Rebirth",
+      description: "If you lose this week, gain +50 bonus points. Rise from the ashes.",
+      rarity: "legendary",
+      kind: "bonus_points",
+      value: 50.0,
+    },
+
+    // === EPIC TIER ===
     {
       code: "CURSE_OF_THE_FUMBLE",
       name: "Cursed Totem",
@@ -357,14 +359,32 @@ async function main() {
       kind: "penalty",
       value: 5.0,
     },
-    // Verification powerups
     {
-      code: "PLUS_10",
-      name: "Small Blessing",
-      description: "Add 10 bonus points this week.",
-      rarity: "common",
-      kind: "bonus_points",
-      value: 10.0,
+      code: "DARK_RITUAL",
+      name: "Dark Ritual",
+      description: "Sacrifice 20 points to reduce opponent's score by 30.",
+      rarity: "epic",
+      scope: "opponent",
+      kind: "penalty",
+      value: 30.0,
+    },
+    {
+      code: "BERSERKER_RAGE",
+      name: "Berserker Rage",
+      description: "1.25x multiplier on total score. Unleash the fury.",
+      rarity: "epic",
+      kind: "multiplier",
+      value: 1.25,
+    },
+
+    // === RARE TIER ===
+    {
+      code: "XP_BOOST_15",
+      name: "Experience Relic",
+      description: "Multiply this week's total score by 1.15x.",
+      rarity: "rare",
+      kind: "multiplier",
+      value: 1.15,
     },
     {
       code: "PASS_YDS_X15",
@@ -389,6 +409,48 @@ async function main() {
       rarity: "rare",
       kind: "multiplier",
       value: 1.5,
+    },
+    {
+      code: "TD_CELEBRATION",
+      name: "Touchdown Dance",
+      description: "+3 bonus points per touchdown scored by your team.",
+      rarity: "rare",
+      kind: "bonus_points",
+      value: 3.0,
+    },
+
+    // === COMMON TIER ===
+    {
+      code: "PASS_TD_BONUS_2",
+      name: "Quarterback's Tome",
+      description: "Earn +2 points for every Passing TD this week.",
+      rarity: "common",
+      kind: "bonus_points",
+      value: 2.0,
+    },
+    {
+      code: "PLUS_10",
+      name: "Small Blessing",
+      description: "Add 10 bonus points this week.",
+      rarity: "common",
+      kind: "bonus_points",
+      value: 10.0,
+    },
+    {
+      code: "LUCKY_CHARM",
+      name: "Lucky Charm",
+      description: "+5 bonus points. A little luck goes a long way.",
+      rarity: "common",
+      kind: "bonus_points",
+      value: 5.0,
+    },
+    {
+      code: "IRON_WILL",
+      name: "Iron Will",
+      description: "1.05x multiplier. Consistency is key.",
+      rarity: "common",
+      kind: "multiplier",
+      value: 1.05,
     },
   ];
 

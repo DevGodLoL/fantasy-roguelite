@@ -41,3 +41,18 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
 }
+
+/* Artifact card shine animation */
+@keyframes shine {
+  0% {
+    background-position: 200% 200%;
+  }
+
+  100% {
+    background-position: -200% -200%;
+  }
+}
+
+.animate-shine {
+  animation: shine 1.5s ease-in-out infinite;
+}
