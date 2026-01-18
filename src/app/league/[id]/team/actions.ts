@@ -21,11 +21,25 @@ export async function addPlayerToRoster(
         throw new Error("Player is already rostered in this league.");
     }
 
-    // 2. Assign player to the specific slot
+    // Assign player to the specific slot
     await db.rosterSlot.update({
         where: { id: slotId },
         data: { playerId },
     });
+
+    // Log Transaction
+    const player = await db.player.findUnique({ where: { id: playerId } });
+    if (player) {
+        await db.leagueTransaction.create({
+            data: {
+                leagueId,
+                teamId,
+                type: "ADD",
+                playerId,
+                description: `Added ${player.name} (Free Agent)`,
+            },
+        });
+    }
 
     revalidatePath(`/league/${leagueId}/team/${teamId}`);
 }
@@ -35,6 +49,24 @@ export async function dropPlayer(
     teamId: string,
     slotId: string
 ) {
+    // Fetch slot to get player info for log
+    const slot = await db.rosterSlot.findUnique({
+        where: { id: slotId },
+        include: { player: true },
+    });
+
+    if (slot && slot.player) {
+        await db.leagueTransaction.create({
+            data: {
+                leagueId,
+                teamId,
+                type: "DROP",
+                playerId: slot.player.id,
+                description: `Dropped ${slot.player.name}`,
+            },
+        });
+    }
+
     await db.rosterSlot.update({
         where: { id: slotId },
         data: { playerId: null },

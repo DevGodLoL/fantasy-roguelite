@@ -178,6 +178,12 @@ export default async function LeaguePage({
                   >
                     Admin
                   </Link>
+                  <Link
+                    href={`/league/${id}/transactions`}
+                    className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white font-black uppercase text-xs rounded-full transition-all"
+                  >
+                    Logs
+                  </Link>
                 </div>
               )}
             </div>

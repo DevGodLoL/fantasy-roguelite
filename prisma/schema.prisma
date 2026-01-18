@@ -290,3 +290,18 @@ model WaiverClaim {
 
   @@index([teamId, status])
 }
+
+model LeagueTransaction {
+  id        String   @id @default(cuid())
+  leagueId  String
+  teamId    String
+  type      String   // ADD | DROP | TRADE | WAIVER
+  playerId  String?
+  amount    Int?     // FAAB or other value
+  description String
+  createdAt DateTime @default(now())
+
+  league League @relation(fields: [leagueId], references: [id])
+  team   Team   @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+}
