@@ -86,7 +86,7 @@ export default function PackOpening({
     if (viewState === 'chest' || viewState === 'charging') {
         const isCharging = viewState === 'charging';
         return (
-            <div className="relative min-h-[500px] flex items-center justify-center p-8 bg-black/60 backdrop-blur-md border border-purple-500/20 rounded-[2.5rem] overflow-hidden group perspective-[1200px]">
+            <div className="relative min-h-[280px] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md border border-purple-500/20 rounded-2xl overflow-hidden group perspective-[1200px]">
                 {/* Ambient Background Pulse */}
                 <div className={`absolute inset-0 bg-gradient-to-t from-amber-900/10 via-transparent to-transparent ${isCharging ? 'animate-pulse opacity-50' : 'animate-pulse'}`} />
 
@@ -97,61 +97,61 @@ export default function PackOpening({
                     </div>
                 )}
 
-                <div className="text-center space-y-16 relative z-10 w-full max-w-md flex flex-col items-center">
+                <div className="text-center space-y-6 relative z-10 w-full max-w-md flex flex-col items-center">
 
                     {/* The Treasure Chest */}
                     <div
-                        className={`relative w-48 h-36 cursor-pointer transition-transform duration-300 ${isCharging ? 'animate-levitate' : 'hover:scale-105 active:scale-95 animate-float'}`}
+                        className={`relative w-36 h-28 cursor-pointer transition-transform duration-300 ${isCharging ? 'animate-levitate' : 'hover:scale-105 active:scale-95 animate-float'}`}
                         onClick={!isCharging ? handleOpenPack : undefined}
                     >
                         {/* Glow Behind */}
-                        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-600 blur-[80px] rounded-full transition-all duration-300 ${isCharging ? 'opacity-100 scale-150 animate-pulse' : 'opacity-20 animate-pulse'}`} />
+                        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-600 blur-[60px] rounded-full transition-all duration-300 ${isCharging ? 'opacity-100 scale-150 animate-pulse' : 'opacity-20 animate-pulse'}`} />
 
                         {/* Chest Body Wrapper for Rumble */}
                         <div className={`relative w-full h-full ${isCharging ? 'animate-rumble' : ''}`}>
                             {/* Chest Base */}
-                            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-[#8B4513] to-[#4A2511] rounded-b-2xl border-4 border-[#DAA520] shadow-2xl z-20 flex items-center justify-center overflow-hidden">
+                            <div className="absolute inset-x-0 bottom-0 h-[72px] bg-gradient-to-b from-[#8B4513] to-[#4A2511] rounded-b-xl border-3 border-[#DAA520] shadow-2xl z-20 flex items-center justify-center overflow-hidden">
                                 {/* Wood Grain / Texture */}
                                 <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,black,transparent_5px)]" />
                                 {/* Keyhole */}
-                                <div className="w-8 h-8 rounded-full bg-[#DAA520] flex items-center justify-center shadow-lg transform translate-y-2">
-                                    <div className="w-2 h-3 bg-black rounded-full" />
+                                <div className="w-6 h-6 rounded-full bg-[#DAA520] flex items-center justify-center shadow-lg transform translate-y-1">
+                                    <div className="w-1.5 h-2 bg-black rounded-full" />
                                     {isCharging && <div className="absolute inset-0 bg-yellow-400 blur-sm animate-pulse" />}
                                 </div>
                             </div>
 
                             {/* Chest Lid */}
                             <div className={`
-                                absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#A0522D] to-[#8B4513] rounded-t-2xl border-4 border-[#DAA520] z-30 origin-bottom transition-all
+                                absolute inset-x-0 top-0 h-[48px] bg-gradient-to-b from-[#A0522D] to-[#8B4513] rounded-t-xl border-3 border-[#DAA520] z-30 origin-bottom transition-all
                                 ${isCharging ? 'translate-y-[-2px]' : ''}
                             `}>
                                 {/* Lid Detail */}
-                                <div className="absolute inset-x-4 top-2 h-10 border-2 border-[#DAA520]/50 rounded-t-lg" />
+                                <div className="absolute inset-x-3 top-1.5 h-8 border-2 border-[#DAA520]/50 rounded-t-lg" />
                             </div>
 
                             {/* Interact Hint */}
                             {!isCharging && (
-                                <div className="absolute -top-12 left-1/2 -translate-x-1/2 animate-bounce">
-                                    <span className="text-2xl filter drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">✨</span>
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 animate-bounce">
+                                    <span className="text-lg filter drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">✨</span>
                                 </div>
                             )}
 
                             {/* Leaking Light (Cracks) */}
                             {isCharging && (
-                                <div className="absolute inset-x-0 top-16 h-1 bg-yellow-400 blur-md z-40 animate-pulse" />
+                                <div className="absolute inset-x-0 top-[48px] h-1 bg-yellow-400 blur-md z-40 animate-pulse" />
                             )}
                         </div>
                     </div>
 
-                    <div className="space-y-4">
-                        <h2 className={`text-3xl font-black text-white uppercase tracking-tighter transition-all duration-300 ${isCharging ? 'text-amber-300 scale-110 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]' : ''}`}>
+                    <div className="space-y-2">
+                        <h2 className={`text-xl font-black text-white uppercase tracking-tight transition-all duration-300 ${isCharging ? 'text-amber-300 scale-110 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]' : ''}`}>
                             {isCharging ? 'Unsealing...' : 'Ancient Chest'}
                         </h2>
 
                         {!isCharging && (
                             <button
                                 onClick={handleOpenPack}
-                                className="px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-black uppercase tracking-widest rounded-xl hover:from-amber-500 hover:to-amber-400 hover:scale-105 transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                                className="px-6 py-2 bg-gradient-to-r from-amber-600 to-amber-500 text-white text-sm font-black uppercase tracking-widest rounded-lg hover:from-amber-500 hover:to-amber-400 hover:scale-105 transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]"
                             >
                                 Open Chest
                             </button>

@@ -427,10 +427,12 @@ export default async function WeekPage({
                     )}
 
                     {/* ═══════════════════════════════════════════════════════════════ */}
-                    {/* WEEKLY MISSIONS */}
+                    {/* WEEKLY MISSIONS - Side panel or below depending on state */}
                     {/* ═══════════════════════════════════════════════════════════════ */}
                     {userTeam && userMissions.length > 0 && (
-                        <MissionsPanel missions={userMissions} isFinal={isFinal} />
+                        <div className="mb-6">
+                            <MissionsPanel missions={userMissions} isFinal={isFinal} />
+                        </div>
                     )}
 
                     {/* ═══════════════════════════════════════════════════════════════ */}
@@ -441,10 +443,10 @@ export default async function WeekPage({
                             {/* VS Background Glow */}
                             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-blue-500/10 blur-3xl -z-10" />
 
-                            <div className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-[2.5rem] p-10 lg:p-16 relative overflow-hidden">
+                            <div className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6 lg:p-10 relative overflow-hidden">
                                 {/* Result Badge */}
                                 {isFinal && (
-                                    <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-8 py-2 rounded-full text-sm font-black uppercase tracking-[.3em] shadow-2xl z-20 ${userWon ? "bg-emerald-500 text-white shadow-emerald-500/20" :
+                                    <div className={`absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest shadow-lg z-20 ${userWon ? "bg-emerald-500 text-white shadow-emerald-500/20" :
                                         userLost ? "bg-red-500 text-white shadow-red-500/20" :
                                             "bg-zinc-700 text-white"
                                         }`}>
@@ -452,20 +454,20 @@ export default async function WeekPage({
                                     </div>
                                 )}
 
-                                <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-10">
                                     {/* User Team Hand */}
-                                    <div className={`flex-1 flex flex-col items-center gap-6 transition-all duration-500 ${userLost ? 'grayscale opacity-50 contrast-75' : 'scale-110'}`}>
+                                    <div className={`flex-1 flex flex-col items-center gap-3 transition-all duration-500 ${userLost ? 'grayscale opacity-50 contrast-75' : ''}`}>
                                         <div className="relative">
-                                            <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-[2rem] bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-4xl sm:text-6xl font-black shadow-[0_0_50px_rgba(147,51,234,0.3)] border-2 border-white/10`}>
+                                            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-2xl sm:text-3xl font-black shadow-[0_0_30px_rgba(147,51,234,0.3)] border-2 border-white/10`}>
                                                 {userTeam.name.charAt(0)}
                                             </div>
-                                            {userWon && <div className="absolute -top-4 -right-4 text-4xl animate-bounce">👑</div>}
+                                            {userWon && <div className="absolute -top-2 -right-2 text-2xl animate-bounce">👑</div>}
                                         </div>
-                                        <div className="text-center space-y-1">
-                                            <div className="text-[10px] font-black text-purple-400 uppercase tracking-[.3em]">Your Legion</div>
-                                            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">{userTeam.name}</h2>
+                                        <div className="text-center">
+                                            <div className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Your Legion</div>
+                                            <h2 className="text-lg sm:text-xl font-black tracking-tight">{userTeam.name}</h2>
                                         </div>
-                                        <div className={`text-6xl sm:text-8xl font-black tracking-tighter transition-all ${userWon ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'text-zinc-200'}`}>
+                                        <div className={`text-4xl sm:text-5xl font-black tracking-tighter transition-all ${userWon ? 'text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-zinc-200'}`}>
                                             {(userScore || 0).toFixed(1)}
                                         </div>
 
@@ -505,26 +507,26 @@ export default async function WeekPage({
                                     </div>
 
                                     {/* VS Splatter */}
-                                    <div className="relative shrink-0 py-8">
-                                        <div className="text-4xl sm:text-5xl font-black text-zinc-800 italic select-none">VS</div>
+                                    <div className="relative shrink-0 py-4">
+                                        <div className="text-2xl sm:text-3xl font-black text-zinc-700 italic select-none">VS</div>
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="w-1 h-32 bg-gradient-to-b from-transparent via-white/10 to-transparent rotate-12" />
+                                            <div className="w-0.5 h-20 bg-gradient-to-b from-transparent via-white/10 to-transparent rotate-12" />
                                         </div>
                                     </div>
 
                                     {/* Opponent Team Hand */}
-                                    <div className={`flex-1 flex flex-col items-center gap-6 transition-all duration-500 ${userWon ? 'grayscale opacity-50 contrast-75' : userLost ? 'scale-110' : ''}`}>
+                                    <div className={`flex-1 flex flex-col items-center gap-3 transition-all duration-500 ${userWon ? 'grayscale opacity-50 contrast-75' : ''}`}>
                                         <div className="relative">
-                                            <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-[2rem] bg-zinc-900 flex items-center justify-center text-4xl sm:text-6xl font-black border-2 border-white/5 shadow-inner`}>
+                                            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-zinc-900 flex items-center justify-center text-2xl sm:text-3xl font-black border-2 border-white/5 shadow-inner`}>
                                                 {oppTeam.name.charAt(0)}
                                             </div>
-                                            {userLost && <div className="absolute -top-4 -right-4 text-4xl animate-bounce">👑</div>}
+                                            {userLost && <div className="absolute -top-2 -right-2 text-2xl animate-bounce">👑</div>}
                                         </div>
-                                        <div className="text-center space-y-1">
-                                            <div className="text-[10px] font-black text-zinc-500 uppercase tracking-[.3em]">The Enemy</div>
-                                            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-300">{oppTeam.name}</h2>
+                                        <div className="text-center">
+                                            <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">The Enemy</div>
+                                            <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-300">{oppTeam.name}</h2>
                                         </div>
-                                        <div className={`text-6xl sm:text-8xl font-black tracking-tighter transition-all ${userLost ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.3)]' : 'text-zinc-600'}`}>
+                                        <div className={`text-4xl sm:text-5xl font-black tracking-tighter transition-all ${userLost ? 'text-red-400 drop-shadow-[0_0_15px_rgba(248,113,113,0.3)]' : 'text-zinc-600'}`}>
                                             {(oppScore || 0).toFixed(1)}
                                         </div>
 
