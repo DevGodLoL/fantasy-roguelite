@@ -52,6 +52,26 @@ const RARITY_CONFIG: Record<string, {
     },
 };
 
+// Type configuration for Boosts vs Curses
+const TYPE_CONFIG = {
+    boost: {
+        label: "BLESSINGS",
+        subtitle: "Power up your team",
+        icon: "🛡️",
+        gradient: "from-emerald-500 via-green-400 to-teal-500",
+        bgGlow: "bg-emerald-900/5",
+        borderColor: "border-emerald-500/30",
+    },
+    curse: {
+        label: "CURSES",
+        subtitle: "Sabotage your opponent",
+        icon: "⚔️",
+        gradient: "from-red-500 via-rose-400 to-pink-500",
+        bgGlow: "bg-red-900/5",
+        borderColor: "border-red-500/30",
+    },
+};
+
 interface Powerup {
     id: string;
     code: string;
@@ -68,10 +88,12 @@ function CollectibleCard({
     powerup,
     isDiscovered,
     count = 0,
+    isCurse = false,
 }: {
     powerup: Powerup;
     isDiscovered: boolean;
     count?: number;
+    isCurse?: boolean;
 }) {
     const config = RARITY_CONFIG[powerup.rarity] || RARITY_CONFIG.common;
 
@@ -83,7 +105,7 @@ function CollectibleCard({
                     className={`
                         relative aspect-[3/4] rounded-2xl overflow-hidden
                         bg-gradient-to-br from-zinc-800 via-zinc-900 to-black
-                        border-2 border-zinc-700/50
+                        border-2 ${isCurse ? 'border-red-900/30' : 'border-zinc-700/50'}
                         flex items-center justify-center
                         transition-all duration-300
                         hover:scale-105 hover:border-zinc-600
@@ -117,12 +139,12 @@ function CollectibleCard({
                     {/* Rarity hint glow */}
                     <div
                         className={`absolute inset-0 opacity-10 blur-xl ${powerup.rarity === "legendary"
-                            ? "bg-amber-500"
-                            : powerup.rarity === "epic"
-                                ? "bg-purple-500"
-                                : powerup.rarity === "rare"
-                                    ? "bg-blue-500"
-                                    : "bg-zinc-500"
+                                ? "bg-amber-500"
+                                : powerup.rarity === "epic"
+                                    ? "bg-purple-500"
+                                    : powerup.rarity === "rare"
+                                        ? "bg-blue-500"
+                                        : "bg-zinc-500"
                             }`}
                     />
                 </div>
@@ -179,14 +201,14 @@ function CollectibleCard({
 
                     {/* Stats footer */}
                     <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                        <div className="text-[10px] uppercase text-white/40 font-mono">
-                            {powerup.scope === "opponent" ? "⚔️ Curse" : "🛡️ Buff"}
+                        <div className={`text-[10px] uppercase font-mono ${isCurse ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {isCurse ? "⚔️ Curse" : "🛡️ Buff"}
                         </div>
                         {powerup.value && (
                             <div className={`text-sm font-black ${config.textColor}`}>
                                 {powerup.kind === "multiplier"
                                     ? `${powerup.value}x`
-                                    : `+${powerup.value}`}
+                                    : isCurse ? `-${powerup.value}` : `+${powerup.value}`}
                             </div>
                         )}
                     </div>
@@ -214,6 +236,58 @@ function CollectibleCard({
     );
 }
 
+// Rarity section component
+function RaritySection({
+    rarity,
+    powerups,
+    discoveredIds,
+    ownedCounts,
+    isCurse,
+}: {
+    rarity: string;
+    powerups: Powerup[];
+    discoveredIds: Set<string>;
+    ownedCounts: Map<string, number>;
+    isCurse: boolean;
+}) {
+    const config = RARITY_CONFIG[rarity];
+    if (powerups.length === 0) return null;
+
+    return (
+        <div className="space-y-4">
+            {/* Rarity header */}
+            <div className="flex items-center gap-3">
+                <div
+                    className={`
+                        px-3 py-1.5 rounded-lg
+                        bg-gradient-to-r ${config.gradient}
+                        text-black font-black text-xs uppercase tracking-widest
+                    `}
+                >
+                    {config.icon} {config.label}
+                </div>
+                <div className="h-px flex-1 bg-white/10" />
+                <div className="text-xs text-zinc-500 font-mono">
+                    {powerups.filter((p) => discoveredIds.has(p.id)).length} / {powerups.length}
+                </div>
+            </div>
+
+            {/* Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {powerups.map((powerup) => (
+                    <CollectibleCard
+                        key={powerup.id}
+                        powerup={powerup}
+                        isDiscovered={discoveredIds.has(powerup.id)}
+                        count={ownedCounts.get(powerup.id) || 0}
+                        isCurse={isCurse}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default async function InventoryPage({
     params,
 }: {
@@ -231,21 +305,18 @@ export default async function InventoryPage({
     // Identify User Team (Mock)
     const userTeam = league.teams.find((t) => t.name === "The DevGods") || league.teams[0];
 
-    // Fetch ALL powerups in the game
+    // Fetch ALL powerups
     const allPowerups = await db.powerup.findMany({
         orderBy: { code: "asc" },
     });
 
-    // Fetch team's discovered powerups (both active and consumed)
+    // Fetch team's discovered powerups
     const teamPowerups = await db.teamPowerup.findMany({
         where: { teamId: userTeam.id },
-        include: {
-            powerup: true,
-            week: true,
-        },
+        include: { powerup: true, week: true },
     });
 
-    // Create a map of powerupId -> count owned
+    // Create maps
     const ownedCounts = new Map<string, number>();
     const activeCounts = new Map<string, number>();
 
@@ -256,28 +327,26 @@ export default async function InventoryPage({
         }
     });
 
-    // Set of discovered powerup IDs
     const discoveredIds = new Set(teamPowerups.map((tp) => tp.powerupId));
 
-    // Group powerups by rarity
-    const groupedPowerups = RARITY_ORDER.map((rarity) => ({
-        rarity,
-        config: RARITY_CONFIG[rarity],
-        powerups: allPowerups.filter((p) => p.rarity === rarity),
-    }));
+    // Separate into Boosts and Curses
+    const boosts = allPowerups.filter((p) => p.scope !== "opponent");
+    const curses = allPowerups.filter((p) => p.scope === "opponent");
 
     // Stats
     const totalPowerups = allPowerups.length;
     const discoveredCount = discoveredIds.size;
     const activeTotal = Array.from(activeCounts.values()).reduce((a, b) => a + b, 0);
+    const boostsDiscovered = boosts.filter(p => discoveredIds.has(p.id)).length;
+    const cursesDiscovered = curses.filter(p => discoveredIds.has(p.id)).length;
 
     return (
         <div className="min-h-screen bg-[#030303] text-white font-sans selection:bg-amber-500/30">
             {/* Animated background */}
             <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[10%] left-[5%] w-[40%] h-[40%] bg-amber-900/5 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[20%] right-[10%] w-[35%] h-[35%] bg-purple-900/5 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: "1s" }} />
-                <div className="absolute top-[60%] left-[50%] w-[25%] h-[25%] bg-blue-900/5 blur-[80px] rounded-full animate-pulse" style={{ animationDelay: "2s" }} />
+                <div className="absolute top-[10%] left-[5%] w-[40%] h-[40%] bg-emerald-900/5 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[20%] right-[10%] w-[35%] h-[35%] bg-red-900/5 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: "1s" }} />
+                <div className="absolute top-[60%] left-[50%] w-[25%] h-[25%] bg-purple-900/5 blur-[80px] rounded-full animate-pulse" style={{ animationDelay: "2s" }} />
             </div>
 
             {/* Nav */}
@@ -289,121 +358,147 @@ export default async function InventoryPage({
                     >
                         ← Back to League
                     </Link>
-                    <h1 className="text-2xl font-black uppercase tracking-tighter bg-gradient-to-r from-amber-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+                    <h1 className="text-2xl font-black uppercase tracking-tighter bg-gradient-to-r from-emerald-400 via-amber-400 to-red-400 bg-clip-text text-transparent">
                         Artifact Collection
                     </h1>
                 </div>
             </div>
 
             <main className="relative z-10 max-w-7xl mx-auto p-6 space-y-16">
-                {/* Hero Stats */}
+                {/* Stats Section */}
                 <section className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-blue-500/10 rounded-3xl blur-3xl" />
-                    <div className="relative grid md:grid-cols-4 gap-6">
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-amber-500/10 to-red-500/10 rounded-3xl blur-3xl" />
+                    <div className="relative grid md:grid-cols-5 gap-6">
                         {/* Collection Progress */}
                         <div className="md:col-span-2 p-8 bg-black/40 backdrop-blur-sm border border-white/10 rounded-3xl">
                             <div className="text-xs text-zinc-500 uppercase font-black tracking-[0.3em] mb-4">
                                 Collection Progress
                             </div>
                             <div className="flex items-end gap-4 mb-4">
-                                <div className="text-6xl font-black bg-gradient-to-r from-amber-400 to-purple-400 bg-clip-text text-transparent">
+                                <div className="text-6xl font-black bg-gradient-to-r from-emerald-400 to-red-400 bg-clip-text text-transparent">
                                     {discoveredCount}
                                 </div>
                                 <div className="text-2xl text-zinc-600 font-black mb-2">/ {totalPowerups}</div>
                             </div>
-                            {/* Progress bar */}
                             <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-gradient-to-r from-amber-500 via-purple-500 to-blue-500 rounded-full transition-all duration-1000"
+                                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 rounded-full transition-all duration-1000"
                                     style={{ width: `${(discoveredCount / totalPowerups) * 100}%` }}
                                 />
                             </div>
                             <div className="mt-2 text-xs text-zinc-500">
-                                {Math.round((discoveredCount / totalPowerups) * 100)}% of all artifacts discovered
+                                {Math.round((discoveredCount / totalPowerups) * 100)}% discovered
                             </div>
                         </div>
 
-                        {/* Active Artifacts */}
+                        {/* Boosts Count */}
                         <div className="p-8 bg-black/40 backdrop-blur-sm border border-emerald-500/20 rounded-3xl">
                             <div className="text-xs text-emerald-400/60 uppercase font-black tracking-[0.3em] mb-4">
-                                Active
+                                🛡️ Blessings
                             </div>
-                            <div className="text-5xl font-black text-emerald-400">{activeTotal}</div>
-                            <div className="text-xs text-zinc-500 mt-2">Ready to deploy</div>
+                            <div className="text-4xl font-black text-emerald-400">{boostsDiscovered}</div>
+                            <div className="text-xs text-zinc-500 mt-2">/ {boosts.length} total</div>
                         </div>
 
-                        {/* Total Collected */}
+                        {/* Curses Count */}
+                        <div className="p-8 bg-black/40 backdrop-blur-sm border border-red-500/20 rounded-3xl">
+                            <div className="text-xs text-red-400/60 uppercase font-black tracking-[0.3em] mb-4">
+                                ⚔️ Curses
+                            </div>
+                            <div className="text-4xl font-black text-red-400">{cursesDiscovered}</div>
+                            <div className="text-xs text-zinc-500 mt-2">/ {curses.length} total</div>
+                        </div>
+
+                        {/* Active */}
                         <div className="p-8 bg-black/40 backdrop-blur-sm border border-white/10 rounded-3xl">
                             <div className="text-xs text-zinc-500 uppercase font-black tracking-[0.3em] mb-4">
-                                Total Acquired
+                                Active
                             </div>
-                            <div className="text-5xl font-black text-white">{teamPowerups.length}</div>
-                            <div className="text-xs text-zinc-500 mt-2">All time</div>
+                            <div className="text-4xl font-black text-white">{activeTotal}</div>
+                            <div className="text-xs text-zinc-500 mt-2">Ready to use</div>
                         </div>
                     </div>
                 </section>
 
-                {/* Rarity breakdown stats */}
-                <section className="grid grid-cols-4 gap-4">
-                    {RARITY_ORDER.map((rarity) => {
-                        const config = RARITY_CONFIG[rarity];
-                        const total = allPowerups.filter((p) => p.rarity === rarity).length;
-                        const discovered = allPowerups.filter(
-                            (p) => p.rarity === rarity && discoveredIds.has(p.id)
-                        ).length;
-
-                        return (
-                            <div
-                                key={rarity}
-                                className={`p-4 rounded-2xl border ${config.border} ${config.bgCard}`}
-                            >
-                                <div className={`text-[10px] uppercase font-black tracking-[0.2em] ${config.textColor} mb-2`}>
-                                    {config.icon} {config.label}
-                                </div>
-                                <div className="flex items-baseline gap-2">
-                                    <span className={`text-2xl font-black ${config.textColor}`}>{discovered}</span>
-                                    <span className="text-sm text-zinc-600">/ {total}</span>
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                {/* BLESSINGS SECTION */}
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                <section className="space-y-8">
+                    {/* Section Header */}
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-transparent blur-3xl -z-10" />
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="text-5xl">🛡️</div>
+                                <div>
+                                    <h2 className="text-3xl font-black uppercase tracking-tight bg-gradient-to-r from-emerald-400 to-green-300 bg-clip-text text-transparent">
+                                        Blessings
+                                    </h2>
+                                    <p className="text-sm text-emerald-400/60">Power up your team with divine artifacts</p>
                                 </div>
                             </div>
-                        );
-                    })}
+                            <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/50 to-transparent" />
+                            <div className="px-4 py-2 bg-emerald-900/30 border border-emerald-500/30 rounded-xl">
+                                <span className="text-sm font-black text-emerald-400">{boostsDiscovered} / {boosts.length}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Boosts by Rarity */}
+                    <div className="space-y-10 pl-4 border-l-2 border-emerald-500/20">
+                        {RARITY_ORDER.map((rarity) => (
+                            <RaritySection
+                                key={`boost-${rarity}`}
+                                rarity={rarity}
+                                powerups={boosts.filter((p) => p.rarity === rarity)}
+                                discoveredIds={discoveredIds}
+                                ownedCounts={ownedCounts}
+                                isCurse={false}
+                            />
+                        ))}
+                    </div>
                 </section>
 
-                {/* Collection Grid by Rarity */}
-                {groupedPowerups.map(({ rarity, config, powerups }) => (
-                    <section key={rarity} className="space-y-6">
-                        {/* Section Header */}
-                        <div className="flex items-center gap-4">
-                            <div
-                                className={`
-                                    px-4 py-2 rounded-xl
-                                    bg-gradient-to-r ${config.gradient}
-                                    text-black font-black text-sm uppercase tracking-widest
-                                `}
-                            >
-                                {config.icon} {config.label}
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                {/* CURSES SECTION */}
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                <section className="space-y-8">
+                    {/* Section Header */}
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-transparent blur-3xl -z-10" />
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="text-5xl">⚔️</div>
+                                <div>
+                                    <h2 className="text-3xl font-black uppercase tracking-tight bg-gradient-to-r from-red-400 to-rose-300 bg-clip-text text-transparent">
+                                        Curses
+                                    </h2>
+                                    <p className="text-sm text-red-400/60">Sabotage your opponents with dark magic</p>
+                                </div>
                             </div>
-                            <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" />
-                            <div className="text-xs text-zinc-500 font-mono">
-                                {powerups.filter((p) => discoveredIds.has(p.id)).length} / {powerups.length}
+                            <div className="h-px flex-1 bg-gradient-to-r from-red-500/50 to-transparent" />
+                            <div className="px-4 py-2 bg-red-900/30 border border-red-500/30 rounded-xl">
+                                <span className="text-sm font-black text-red-400">{cursesDiscovered} / {curses.length}</span>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Cards Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                            {powerups.map((powerup) => (
-                                <CollectibleCard
-                                    key={powerup.id}
-                                    powerup={powerup}
-                                    isDiscovered={discoveredIds.has(powerup.id)}
-                                    count={ownedCounts.get(powerup.id) || 0}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                ))}
+                    {/* Curses by Rarity */}
+                    <div className="space-y-10 pl-4 border-l-2 border-red-500/20">
+                        {RARITY_ORDER.map((rarity) => (
+                            <RaritySection
+                                key={`curse-${rarity}`}
+                                rarity={rarity}
+                                powerups={curses.filter((p) => p.rarity === rarity)}
+                                discoveredIds={discoveredIds}
+                                ownedCounts={ownedCounts}
+                                isCurse={true}
+                            />
+                        ))}
+                    </div>
+                </section>
 
-                {/* Empty state if no powerups */}
+                {/* Empty state */}
                 {allPowerups.length === 0 && (
                     <div className="text-center py-24">
                         <div className="text-8xl mb-6">🎴</div>
