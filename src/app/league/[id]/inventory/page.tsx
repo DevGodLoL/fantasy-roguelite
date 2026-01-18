@@ -40,10 +40,14 @@ const RARITY_CONFIG: Record<string, {
 
 export default async function InventoryPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ showAll?: string }>;
 }) {
     const { id } = await params;
+    const { showAll } = await searchParams;
+    const showAllCards = showAll === "true";
 
     const league = await db.league.findUnique({
         where: { id },
@@ -77,7 +81,10 @@ export default async function InventoryPage({
         }
     });
 
-    const discoveredIds = teamPowerups.map((tp) => tp.powerupId);
+    // If showAllCards is enabled, treat all powerups as discovered for inspection
+    const discoveredIds = showAllCards
+        ? allPowerups.map((p) => p.id)
+        : teamPowerups.map((tp) => tp.powerupId);
     const discoveredSet = new Set(discoveredIds);
 
     // Separate into Boosts and Curses
@@ -116,6 +123,18 @@ export default async function InventoryPage({
             </div>
 
             <main className="relative z-10 max-w-7xl mx-auto p-6 space-y-16">
+                {/* Dev Mode Banner */}
+                {showAllCards && (
+                    <div className="bg-amber-500/20 border border-amber-500/50 rounded-2xl p-4 text-center">
+                        <div className="text-amber-400 font-black uppercase tracking-widest text-sm">
+                            🔓 Dev Mode: All Cards Revealed
+                        </div>
+                        <div className="text-amber-400/60 text-xs mt-1">
+                            Remove ?showAll=true from URL to see normal view
+                        </div>
+                    </div>
+                )}
+
                 {/* Stats Section */}
                 <section className="relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-amber-500/10 to-red-500/10 rounded-3xl blur-3xl" />
