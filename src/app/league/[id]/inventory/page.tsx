@@ -1,6 +1,7 @@
 import { db } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { InteractiveCardGrid } from "@/components/InteractiveArtifactCard";
 
 // Rarity order and styling
 const RARITY_ORDER = ["legendary", "epic", "rare", "common"] as const;
@@ -8,285 +9,34 @@ const RARITY_ORDER = ["legendary", "epic", "rare", "common"] as const;
 const RARITY_CONFIG: Record<string, {
     label: string;
     gradient: string;
-    border: string;
-    glow: string;
     textColor: string;
-    bgCard: string;
     icon: string;
 }> = {
     legendary: {
         label: "LEGENDARY",
         gradient: "from-amber-400 via-yellow-300 to-amber-500",
-        border: "border-amber-400/60",
-        glow: "shadow-[0_0_40px_rgba(251,191,36,0.5)]",
         textColor: "text-amber-300",
-        bgCard: "bg-gradient-to-br from-amber-900/40 via-yellow-900/30 to-amber-950/50",
         icon: "👑",
     },
     epic: {
         label: "EPIC",
         gradient: "from-purple-400 via-fuchsia-400 to-purple-500",
-        border: "border-purple-400/50",
-        glow: "shadow-[0_0_30px_rgba(168,85,247,0.4)]",
         textColor: "text-purple-300",
-        bgCard: "bg-gradient-to-br from-purple-900/40 via-fuchsia-900/30 to-purple-950/50",
         icon: "💎",
     },
     rare: {
         label: "RARE",
         gradient: "from-blue-400 via-cyan-400 to-blue-500",
-        border: "border-blue-400/40",
-        glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]",
         textColor: "text-blue-300",
-        bgCard: "bg-gradient-to-br from-blue-900/40 via-cyan-900/30 to-blue-950/50",
         icon: "✨",
     },
     common: {
         label: "COMMON",
         gradient: "from-zinc-400 via-slate-400 to-zinc-500",
-        border: "border-zinc-500/30",
-        glow: "",
         textColor: "text-zinc-400",
-        bgCard: "bg-gradient-to-br from-zinc-800/40 via-slate-800/30 to-zinc-900/50",
         icon: "⚙️",
     },
 };
-
-// Type configuration for Boosts vs Curses
-const TYPE_CONFIG = {
-    boost: {
-        label: "BLESSINGS",
-        subtitle: "Power up your team",
-        icon: "🛡️",
-        gradient: "from-emerald-500 via-green-400 to-teal-500",
-        bgGlow: "bg-emerald-900/5",
-        borderColor: "border-emerald-500/30",
-    },
-    curse: {
-        label: "CURSES",
-        subtitle: "Sabotage your opponent",
-        icon: "⚔️",
-        gradient: "from-red-500 via-rose-400 to-pink-500",
-        bgGlow: "bg-red-900/5",
-        borderColor: "border-red-500/30",
-    },
-};
-
-interface Powerup {
-    id: string;
-    code: string;
-    name: string;
-    description: string;
-    rarity: string;
-    scope: string;
-    duration: string;
-    kind: string | null;
-    value: number | null;
-}
-
-function CollectibleCard({
-    powerup,
-    isDiscovered,
-    count = 0,
-    isCurse = false,
-}: {
-    powerup: Powerup;
-    isDiscovered: boolean;
-    count?: number;
-    isCurse?: boolean;
-}) {
-    const config = RARITY_CONFIG[powerup.rarity] || RARITY_CONFIG.common;
-
-    // Face-down card for undiscovered
-    if (!isDiscovered) {
-        return (
-            <div className="group relative">
-                <div
-                    className={`
-                        relative aspect-[3/4] rounded-2xl overflow-hidden
-                        bg-gradient-to-br from-zinc-800 via-zinc-900 to-black
-                        border-2 ${isCurse ? 'border-red-900/30' : 'border-zinc-700/50'}
-                        flex items-center justify-center
-                        transition-all duration-300
-                        hover:scale-105 hover:border-zinc-600
-                        cursor-not-allowed
-                    `}
-                >
-                    {/* Card back pattern */}
-                    <div className="absolute inset-0 opacity-20">
-                        <div
-                            className="absolute inset-0"
-                            style={{
-                                backgroundImage: `repeating-linear-gradient(
-                                    45deg,
-                                    transparent,
-                                    transparent 10px,
-                                    rgba(255,255,255,0.02) 10px,
-                                    rgba(255,255,255,0.02) 20px
-                                )`,
-                            }}
-                        />
-                    </div>
-
-                    {/* Question mark */}
-                    <div className="relative z-10 text-center">
-                        <div className="text-6xl mb-3 opacity-30">❓</div>
-                        <div className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600">
-                            Undiscovered
-                        </div>
-                    </div>
-
-                    {/* Rarity hint glow */}
-                    <div
-                        className={`absolute inset-0 opacity-10 blur-xl ${powerup.rarity === "legendary"
-                                ? "bg-amber-500"
-                                : powerup.rarity === "epic"
-                                    ? "bg-purple-500"
-                                    : powerup.rarity === "rare"
-                                        ? "bg-blue-500"
-                                        : "bg-zinc-500"
-                            }`}
-                    />
-                </div>
-            </div>
-        );
-    }
-
-    // Face-up discovered card
-    return (
-        <div className="group relative">
-            <div
-                className={`
-                    relative aspect-[3/4] rounded-2xl overflow-hidden
-                    ${config.bgCard}
-                    border-2 ${config.border}
-                    ${config.glow}
-                    transition-all duration-300
-                    hover:scale-105
-                    cursor-pointer
-                `}
-            >
-                {/* Shine effect overlay */}
-                <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500"
-                    style={{
-                        background:
-                            "linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%)",
-                        backgroundSize: "200% 200%",
-                        animation: "shine 1.5s ease-in-out infinite",
-                    }}
-                />
-
-                {/* Top rarity banner */}
-                <div
-                    className={`
-                        absolute top-0 left-0 right-0 h-8
-                        bg-gradient-to-r ${config.gradient}
-                        flex items-center justify-center
-                    `}
-                >
-                    <span className="text-[10px] font-black tracking-[0.3em] text-black/80">
-                        {config.icon} {config.label}
-                    </span>
-                </div>
-
-                {/* Card content */}
-                <div className="relative z-10 p-4 pt-12 h-full flex flex-col">
-                    <h3 className={`text-lg font-black uppercase leading-tight mb-2 ${config.textColor}`}>
-                        {powerup.name}
-                    </h3>
-                    <p className="text-xs text-white/70 leading-relaxed flex-1">
-                        {powerup.description}
-                    </p>
-
-                    {/* Stats footer */}
-                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                        <div className={`text-[10px] uppercase font-mono ${isCurse ? 'text-red-400' : 'text-emerald-400'}`}>
-                            {isCurse ? "⚔️ Curse" : "🛡️ Buff"}
-                        </div>
-                        {powerup.value && (
-                            <div className={`text-sm font-black ${config.textColor}`}>
-                                {powerup.kind === "multiplier"
-                                    ? `${powerup.value}x`
-                                    : isCurse ? `-${powerup.value}` : `+${powerup.value}`}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Owned count badge */}
-                {count > 0 && (
-                    <div className="absolute top-10 right-2 bg-black/80 px-2 py-1 rounded-full">
-                        <span className="text-[10px] font-black text-white">
-                            x{count}
-                        </span>
-                    </div>
-                )}
-
-                {/* Corner accent */}
-                <div
-                    className={`
-                        absolute bottom-0 right-0 w-16 h-16
-                        bg-gradient-to-tl ${config.gradient}
-                        opacity-10 rounded-tl-[50px]
-                    `}
-                />
-            </div>
-        </div>
-    );
-}
-
-// Rarity section component
-function RaritySection({
-    rarity,
-    powerups,
-    discoveredIds,
-    ownedCounts,
-    isCurse,
-}: {
-    rarity: string;
-    powerups: Powerup[];
-    discoveredIds: Set<string>;
-    ownedCounts: Map<string, number>;
-    isCurse: boolean;
-}) {
-    const config = RARITY_CONFIG[rarity];
-    if (powerups.length === 0) return null;
-
-    return (
-        <div className="space-y-4">
-            {/* Rarity header */}
-            <div className="flex items-center gap-3">
-                <div
-                    className={`
-                        px-3 py-1.5 rounded-lg
-                        bg-gradient-to-r ${config.gradient}
-                        text-black font-black text-xs uppercase tracking-widest
-                    `}
-                >
-                    {config.icon} {config.label}
-                </div>
-                <div className="h-px flex-1 bg-white/10" />
-                <div className="text-xs text-zinc-500 font-mono">
-                    {powerups.filter((p) => discoveredIds.has(p.id)).length} / {powerups.length}
-                </div>
-            </div>
-
-            {/* Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {powerups.map((powerup) => (
-                    <CollectibleCard
-                        key={powerup.id}
-                        powerup={powerup}
-                        isDiscovered={discoveredIds.has(powerup.id)}
-                        count={ownedCounts.get(powerup.id) || 0}
-                        isCurse={isCurse}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-}
 
 export default async function InventoryPage({
     params,
@@ -316,18 +66,19 @@ export default async function InventoryPage({
         include: { powerup: true, week: true },
     });
 
-    // Create maps
-    const ownedCounts = new Map<string, number>();
-    const activeCounts = new Map<string, number>();
+    // Create maps (convert to plain objects for client components)
+    const ownedCounts: Record<string, number> = {};
+    const activeCounts: Record<string, number> = {};
 
     teamPowerups.forEach((tp) => {
-        ownedCounts.set(tp.powerupId, (ownedCounts.get(tp.powerupId) || 0) + 1);
+        ownedCounts[tp.powerupId] = (ownedCounts[tp.powerupId] || 0) + 1;
         if (!tp.isConsumed) {
-            activeCounts.set(tp.powerupId, (activeCounts.get(tp.powerupId) || 0) + 1);
+            activeCounts[tp.powerupId] = (activeCounts[tp.powerupId] || 0) + 1;
         }
     });
 
-    const discoveredIds = new Set(teamPowerups.map((tp) => tp.powerupId));
+    const discoveredIds = teamPowerups.map((tp) => tp.powerupId);
+    const discoveredSet = new Set(discoveredIds);
 
     // Separate into Boosts and Curses
     const boosts = allPowerups.filter((p) => p.scope !== "opponent");
@@ -335,10 +86,10 @@ export default async function InventoryPage({
 
     // Stats
     const totalPowerups = allPowerups.length;
-    const discoveredCount = discoveredIds.size;
-    const activeTotal = Array.from(activeCounts.values()).reduce((a, b) => a + b, 0);
-    const boostsDiscovered = boosts.filter(p => discoveredIds.has(p.id)).length;
-    const cursesDiscovered = curses.filter(p => discoveredIds.has(p.id)).length;
+    const discoveredCount = discoveredSet.size;
+    const activeTotal = Object.values(activeCounts).reduce((a, b) => a + b, 0);
+    const boostsDiscovered = boosts.filter(p => discoveredSet.has(p.id)).length;
+    const cursesDiscovered = curses.filter(p => discoveredSet.has(p.id)).length;
 
     return (
         <div className="min-h-screen bg-[#030303] text-white font-sans selection:bg-amber-500/30">
@@ -446,16 +197,31 @@ export default async function InventoryPage({
 
                     {/* Boosts by Rarity */}
                     <div className="space-y-10 pl-4 border-l-2 border-emerald-500/20">
-                        {RARITY_ORDER.map((rarity) => (
-                            <RaritySection
-                                key={`boost-${rarity}`}
-                                rarity={rarity}
-                                powerups={boosts.filter((p) => p.rarity === rarity)}
-                                discoveredIds={discoveredIds}
-                                ownedCounts={ownedCounts}
-                                isCurse={false}
-                            />
-                        ))}
+                        {RARITY_ORDER.map((rarity) => {
+                            const rarityBoosts = boosts.filter((p) => p.rarity === rarity);
+                            if (rarityBoosts.length === 0) return null;
+
+                            const config = RARITY_CONFIG[rarity];
+                            const discovered = rarityBoosts.filter(p => discoveredSet.has(p.id)).length;
+
+                            return (
+                                <div key={`boost-${rarity}`} className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-r ${config.gradient} text-black font-black text-xs uppercase tracking-widest`}>
+                                            {config.icon} {config.label}
+                                        </div>
+                                        <div className="h-px flex-1 bg-white/10" />
+                                        <div className="text-xs text-zinc-500 font-mono">{discovered} / {rarityBoosts.length}</div>
+                                    </div>
+                                    <InteractiveCardGrid
+                                        powerups={rarityBoosts}
+                                        discoveredIds={discoveredIds}
+                                        ownedCounts={ownedCounts}
+                                        isCurse={false}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 
@@ -485,16 +251,31 @@ export default async function InventoryPage({
 
                     {/* Curses by Rarity */}
                     <div className="space-y-10 pl-4 border-l-2 border-red-500/20">
-                        {RARITY_ORDER.map((rarity) => (
-                            <RaritySection
-                                key={`curse-${rarity}`}
-                                rarity={rarity}
-                                powerups={curses.filter((p) => p.rarity === rarity)}
-                                discoveredIds={discoveredIds}
-                                ownedCounts={ownedCounts}
-                                isCurse={true}
-                            />
-                        ))}
+                        {RARITY_ORDER.map((rarity) => {
+                            const rarityCurses = curses.filter((p) => p.rarity === rarity);
+                            if (rarityCurses.length === 0) return null;
+
+                            const config = RARITY_CONFIG[rarity];
+                            const discovered = rarityCurses.filter(p => discoveredSet.has(p.id)).length;
+
+                            return (
+                                <div key={`curse-${rarity}`} className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-r ${config.gradient} text-black font-black text-xs uppercase tracking-widest`}>
+                                            {config.icon} {config.label}
+                                        </div>
+                                        <div className="h-px flex-1 bg-white/10" />
+                                        <div className="text-xs text-zinc-500 font-mono">{discovered} / {rarityCurses.length}</div>
+                                    </div>
+                                    <InteractiveCardGrid
+                                        powerups={rarityCurses}
+                                        discoveredIds={discoveredIds}
+                                        ownedCounts={ownedCounts}
+                                        isCurse={true}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 
