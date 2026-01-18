@@ -100,6 +100,8 @@ model Team {
   draftPicks     DraftPick[]
   waiverPriority Int                @default(1)
   faabBalance    Int                @default(100)
+  gold           Int                @default(100)
+  rerolls        Int                @default(1) // Reroll tokens for pack opening
   waiverClaims   WaiverClaim[]
   transactions   LeagueTransaction[]
 
@@ -186,7 +188,7 @@ model PlayerTrait {
   kind        String   // multiplier, bonus_flat
   value       Float    
   expiresAtWeek Int? 
-
+  
   createdAt   DateTime @default(now())
 
   player Player @relation(fields: [playerId], references: [id])
@@ -236,23 +238,30 @@ model Powerup {
   duration    String  @default("week") // week/season
   kind        String?
   value       Float?
+  
+  // New Fields for Shop
+  type        String  @default("card") // card (consumable artifact) | relic (persistent shop item)
+  price       Int     @default(0)
 
   teamPowerups      TeamPowerup[]
   teamPowerupOffers TeamPowerupOffer[]
 }
 
 model TeamPowerup {
-  id         String  @id @default(cuid())
+  id         String   @id @default(cuid())
   teamId     String
   powerupId  String
   weekId     String?
-  isConsumed Boolean @default(false)
+  isConsumed Boolean  @default(false)
+  source     String   @default("pack_opening") // pack_opening | boss | shop | mission | gift
+  createdAt  DateTime @default(now())
 
   team    Team    @relation(fields: [teamId], references: [id])
   powerup Powerup @relation(fields: [powerupId], references: [id])
   week    Week?   @relation(fields: [weekId], references: [id])
 
-  @@unique([teamId, weekId])
+  @@index([teamId, weekId])
+  @@index([teamId, isConsumed])
 }
 
 model TeamPowerupOffer {

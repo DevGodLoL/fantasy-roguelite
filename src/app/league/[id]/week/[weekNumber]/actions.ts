@@ -196,6 +196,82 @@ export async function selectPowerup(formData: FormData) {
     revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
 }
 
+export async function rerollOffers(leagueId: string, teamId: string, weekId: string, weekNumber: number) {
+    if (!leagueId || !teamId || !weekId) {
+        return { success: false, error: "Missing required fields" };
+    }
+
+    // Check if team has rerolls available
+    const team = await db.team.findUnique({
+        where: { id: teamId },
+        select: { rerolls: true }
+    });
+
+    if (!team || team.rerolls <= 0) {
+        return { success: false, error: "No rerolls available" };
+    }
+
+    // Check if team already selected a powerup this week
+    const existing = await db.teamPowerup.findFirst({
+        where: { teamId, weekId }
+    });
+
+    if (existing) {
+        return { success: false, error: "Already selected an artifact this week" };
+    }
+
+    // Delete current offers
+    await db.teamPowerupOffer.deleteMany({
+        where: { teamId, weekId }
+    });
+
+    // Generate new offers
+    const allPowerups = await db.powerup.findMany({ where: { type: 'card' } });
+
+    const selectRarity = () => {
+        const r = Math.random();
+        if (r < 0.7) return "common";
+        if (r < 0.9) return "rare";
+        if (r < 0.99) return "epic";
+        return "legendary";
+    };
+
+    const selected: typeof allPowerups = [];
+    while (selected.length < 4 && selected.length < allPowerups.length) {
+        const targetRarity = selectRarity();
+        const candidates = allPowerups.filter(
+            p => p.rarity === targetRarity && !selected.find(s => s.id === p.id)
+        );
+        if (candidates.length > 0) {
+            selected.push(candidates[Math.floor(Math.random() * candidates.length)]);
+        } else {
+            const any = allPowerups.filter(p => !selected.find(s => s.id === p.id));
+            if (any.length > 0) {
+                selected.push(any[Math.floor(Math.random() * any.length)]);
+            }
+        }
+    }
+
+    // Create new offers and decrement rerolls
+    await db.$transaction([
+        db.teamPowerupOffer.createMany({
+            data: selected.map(p => ({
+                teamId,
+                weekId,
+                powerupId: p.id,
+                isChosen: false
+            }))
+        }),
+        db.team.update({
+            where: { id: teamId },
+            data: { rerolls: { decrement: 1 } }
+        })
+    ]);
+
+    revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
+    return { success: true, rerollsRemaining: team.rerolls - 1 };
+}
+
 export async function consumePowerup(formData: FormData) {
     const teamPowerupId = formData.get("teamPowerupId") as string;
     const leagueId = formData.get("leagueId") as string;
@@ -298,7 +374,13 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                                     },
                                 },
                                 powerups: {
-                                    where: { weekId: weekRef.id, isConsumed: false },
+                                    where: {
+                                        OR: [
+                                            { weekId: weekRef.id },
+                                            { weekId: null }
+                                        ],
+                                        isConsumed: false
+                                    },
                                     include: { powerup: true }
                                 }
                             },
@@ -320,7 +402,13 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                                     },
                                 },
                                 powerups: {
-                                    where: { weekId: weekRef.id, isConsumed: false },
+                                    where: {
+                                        OR: [
+                                            { weekId: weekRef.id },
+                                            { weekId: null }
+                                        ],
+                                        isConsumed: false
+                                    },
                                     include: { powerup: true }
                                 }
                             },
@@ -351,6 +439,31 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                     }
 
                     if (slot.slotType !== "BENCH") {
+                        // --- RELIC LOGIC ---
+                        // Injecting Relic effects before adding to total
+                        const activeRelics = team.powerups.filter((tp: any) => tp.powerup.type === 'relic' && !tp.isConsumed);
+
+                        for (const tp of activeRelics) {
+                            const code = tp.powerup.code;
+
+                            // 1. Boots of Haste (+1 pt per 10 Rush Yards)
+                            if (code === 'relic_rush_bonus') {
+                                // Since generateStats returned stats object
+                                if (stats.rushYds > 0) {
+                                    finalPoints += Math.floor(stats.rushYds / 10);
+                                }
+                            }
+
+                            // 2. Necromancer's Cowl (TE x2, WR x0.5)
+                            if (code === 'relic_necromancy') {
+                                if (slot.player.position === 'TE') {
+                                    finalPoints *= 2;
+                                } else if (slot.player.position === 'WR') {
+                                    finalPoints *= 0.5;
+                                }
+                            }
+                        }
+
                         total += finalPoints;
                     }
                     fumbles += stats.fumbles;
@@ -425,6 +538,9 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
             // Apply Away Powerups
             for (const tp of matchup.awayTeam.powerups) {
                 const p = tp.powerup;
+                // Skip RELICS here, they are handled in processTeam or below
+                if (p.type === 'relic') continue;
+
                 if (p.scope === "self") {
                     if (p.kind === "multiplier" && p.value) awayMultiplier *= p.value;
                     if (p.kind === "bonus_points" && p.value) awayBonus += p.value;
@@ -443,6 +559,25 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
             homeTotal = (homeTotal * homeMultiplier) + homeBonus;
             awayTotal = (awayTotal * awayMultiplier) + awayBonus;
 
+            // Determine Winner & Gold Logic
+            let homeGold = 0;
+            let awayGold = 0;
+            const WIN_GOLD = 100;
+            const LOSS_BASE_GOLD = 50;
+            // Note: complex streak logic omitted for MVP stability, using flat loss bonus for now
+            const LOSS_BONUS = 25;
+
+            if (homeTotal > awayTotal) {
+                homeGold = WIN_GOLD;
+                awayGold = LOSS_BASE_GOLD + LOSS_BONUS; // Pity gold
+            } else if (awayTotal > homeTotal) {
+                awayGold = WIN_GOLD;
+                homeGold = LOSS_BASE_GOLD + LOSS_BONUS;
+            } else {
+                homeGold = 75;
+                awayGold = 75;
+            }
+
             // Update Matchup
             await db.matchup.update({
                 where: { id: matchup.id },
@@ -452,6 +587,18 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                     status: "final",
                 },
             });
+
+            // Grant Gold
+            transactions.push(
+                db.team.update({
+                    where: { id: matchup.homeTeamId },
+                    data: { gold: { increment: homeGold } }
+                }),
+                db.team.update({
+                    where: { id: matchup.awayTeamId },
+                    data: { gold: { increment: awayGold } }
+                })
+            );
         }
 
         console.log(`Executing ${transactions.length} transactions`);

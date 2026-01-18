@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { simulateWeek } from "./actions";
 import LineupManager from "./LineupManager";
 import PackOpening from "./PackOpening";
-import OpenPackButton from "./OpenPackButton";
+import BattleRecap from "./BattleRecap";
 
 const USER_TEAM_NAME = "The DevGods";
 
@@ -98,22 +98,110 @@ export default async function WeekPage({
     // --- POWERUP LOGIC ---
     let activePowerup = null;
     let powerupOffers: any[] = [];
+    let allOffers: any[] = []; // All offers including chosen (for recap)
+    let userRerolls = 0; // Track rerolls for pack opening
+
+    // Helper to generate offers if needed
+    const generateOffersIfNeeded = async (teamId: string, weekId: string) => {
+        // Check if offers exist
+        const existing = await db.teamPowerupOffer.findMany({
+            where: { teamId, weekId },
+            include: { powerup: true }
+        });
+
+        if (existing.length > 0) return existing;
+
+        // No offers exist - generate new ones
+        const allPowerups = await db.powerup.findMany({ where: { type: 'card' } });
+
+        // Select 4 powerups with rarity weighting
+        const selectRarity = () => {
+            const r = Math.random();
+            if (r < 0.7) return "common";
+            if (r < 0.9) return "rare";
+            if (r < 0.99) return "epic";
+            return "legendary";
+        };
+
+        const selected: typeof allPowerups = [];
+        while (selected.length < 4 && selected.length < allPowerups.length) {
+            const targetRarity = selectRarity();
+            const candidates = allPowerups.filter(
+                p => p.rarity === targetRarity && !selected.find(s => s.id === p.id)
+            );
+            if (candidates.length > 0) {
+                selected.push(candidates[Math.floor(Math.random() * candidates.length)]);
+            } else {
+                // Fallback to any unselected
+                const any = allPowerups.filter(p => !selected.find(s => s.id === p.id));
+                if (any.length > 0) {
+                    selected.push(any[Math.floor(Math.random() * any.length)]);
+                }
+            }
+        }
+
+        // Create offers
+        if (selected.length > 0) {
+            await db.teamPowerupOffer.createMany({
+                data: selected.map(p => ({
+                    teamId,
+                    weekId,
+                    powerupId: p.id,
+                    isChosen: false
+                }))
+            });
+        }
+
+        return await db.teamPowerupOffer.findMany({
+            where: { teamId, weekId },
+            include: { powerup: true }
+        });
+    };
 
     if (userTeam) {
+        // Fetch team's reroll count
+        const teamData = await db.team.findUnique({
+            where: { id: userTeam.id },
+            select: { rerolls: true }
+        });
+        userRerolls = teamData?.rerolls ?? 0;
+
         // Check for active powerup
-        const tp = await db.teamPowerup.findUnique({
-            where: { teamId_weekId: { teamId: userTeam.id, weekId: week.id } },
+        const tp = await db.teamPowerup.findFirst({
+            where: { teamId: userTeam.id, weekId: week.id },
             include: { powerup: true }
         });
         if (tp) activePowerup = tp;
 
-        // Check for offers if no active powerup
-        if (!tp) {
-            powerupOffers = await db.teamPowerupOffer.findMany({
-                where: { teamId: userTeam.id, weekId: week.id, isChosen: false },
+        // Check matchup status to determine if we need offers
+        const matchupStatus = userMatchup?.status;
+        const isFinalCheck = matchupStatus === 'final';
+
+        // Auto-generate offers on page load if none exist and week is not final
+        if (!tp && !isFinalCheck) {
+            allOffers = await generateOffersIfNeeded(userTeam.id, week.id);
+        } else {
+            // Fetch existing offers for recap
+            allOffers = await db.teamPowerupOffer.findMany({
+                where: { teamId: userTeam.id, weekId: week.id },
                 include: { powerup: true }
             });
         }
+
+        // Filter to unchosen offers for pack opening display
+        if (!tp) {
+            powerupOffers = allOffers.filter(o => !o.isChosen);
+        }
+    }
+
+    // Fetch opponent's powerup (only show after battle is final)
+    let opponentPowerup = null;
+    if (oppTeam && userMatchup?.status === 'final') {
+        const oppTp = await db.teamPowerup.findFirst({
+            where: { teamId: oppTeam.id, weekId: week.id },
+            include: { powerup: true }
+        });
+        if (oppTp) opponentPowerup = oppTp;
     }
 
     // Organize roster into starters and bench
@@ -193,10 +281,10 @@ export default async function WeekPage({
                             </h1>
                             <span
                                 className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border ${isFinal
-                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                        : isLive
-                                            ? "bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse"
-                                            : "bg-zinc-800/50 text-zinc-500 border-zinc-700/50"
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                    : isLive
+                                        ? "bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse"
+                                        : "bg-zinc-800/50 text-zinc-500 border-zinc-700/50"
                                     }`}
                             >
                                 {isFinal ? "Conquered" : isLive ? "In Battle" : "Approaching"}
@@ -212,10 +300,10 @@ export default async function WeekPage({
                                     key={w.id}
                                     href={`/league/${leagueId}/week/${w.number}`}
                                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-black transition-all ${w.number === weekNum
-                                            ? "bg-purple-600 text-white shadow-[0_0_10px_rgba(147,51,234,0.4)]"
-                                            : w.matchups[0]?.status === "final"
-                                                ? "bg-zinc-800/50 text-zinc-400 hover:text-white"
-                                                : "text-zinc-600 hover:text-zinc-300"
+                                        ? "bg-purple-600 text-white shadow-[0_0_10px_rgba(147,51,234,0.4)]"
+                                        : w.matchups[0]?.status === "final"
+                                            ? "bg-zinc-800/50 text-zinc-400 hover:text-white"
+                                            : "text-zinc-600 hover:text-zinc-300"
                                         }`}
                                 >
                                     {w.number}
@@ -275,8 +363,8 @@ export default async function WeekPage({
                                     <div className="flex flex-col items-end gap-1">
                                         <div className="text-[10px] uppercase font-bold text-zinc-600 tracking-widest text-right w-full">Current State</div>
                                         <div className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border ${activePowerup.isConsumed
-                                                ? "bg-zinc-800 text-zinc-500 border-zinc-700"
-                                                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 animate-pulse"
+                                            ? "bg-zinc-800 text-zinc-500 border-zinc-700"
+                                            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 animate-pulse"
                                             }`}>
                                             {activePowerup.isConsumed ? "Energy Depleted" : "Empowerment Active"}
                                         </div>
@@ -292,15 +380,7 @@ export default async function WeekPage({
                                     weekId={week.id}
                                     weekNumber={weekNum}
                                     offers={powerupOffers}
-                                />
-                            )}
-
-                            {/* 3. Show Open Button if nothing active and no offers (Only if NOT final) */}
-                            {!isFinal && !activePowerup && powerupOffers.length === 0 && (
-                                <OpenPackButton
-                                    leagueId={leagueId}
-                                    teamId={userTeam.id}
-                                    weekId={week.id}
+                                    rerolls={userRerolls}
                                 />
                             )}
                         </>
@@ -318,8 +398,8 @@ export default async function WeekPage({
                                 {/* Result Badge */}
                                 {isFinal && (
                                     <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-8 py-2 rounded-full text-sm font-black uppercase tracking-[.3em] shadow-2xl z-20 ${userWon ? "bg-emerald-500 text-white shadow-emerald-500/20" :
-                                            userLost ? "bg-red-500 text-white shadow-red-500/20" :
-                                                "bg-zinc-700 text-white"
+                                        userLost ? "bg-red-500 text-white shadow-red-500/20" :
+                                            "bg-zinc-700 text-white"
                                         }`}>
                                         {userWon ? "👑 VICTORY" : userLost ? "💀 DEFEAT" : "⚖️ STALEMATE"}
                                     </div>
@@ -341,6 +421,40 @@ export default async function WeekPage({
                                         <div className={`text-6xl sm:text-8xl font-black tracking-tighter transition-all ${userWon ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'text-zinc-200'}`}>
                                             {(userScore || 0).toFixed(1)}
                                         </div>
+
+                                        {/* User Artifact Badge */}
+                                        {activePowerup ? (
+                                            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${activePowerup.powerup.rarity === 'legendary'
+                                                ? 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]'
+                                                : activePowerup.powerup.rarity === 'epic'
+                                                    ? 'bg-purple-500/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                                                    : activePowerup.powerup.rarity === 'rare'
+                                                        ? 'bg-blue-500/10 border-blue-500/30'
+                                                        : 'bg-zinc-800/50 border-zinc-700'
+                                                }`}>
+                                                <span className="text-lg">✨</span>
+                                                <div className="text-left">
+                                                    <div className={`text-xs font-bold ${activePowerup.powerup.rarity === 'legendary' ? 'text-amber-400'
+                                                        : activePowerup.powerup.rarity === 'epic' ? 'text-purple-400'
+                                                            : activePowerup.powerup.rarity === 'rare' ? 'text-blue-400'
+                                                                : 'text-zinc-400'
+                                                        }`}>
+                                                        {activePowerup.powerup.name}
+                                                    </div>
+                                                    <div className="text-[10px] text-zinc-500">
+                                                        {activePowerup.powerup.kind === 'multiplier'
+                                                            ? `${activePowerup.powerup.value}x multiplier`
+                                                            : `+${activePowerup.powerup.value} pts`
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900/50 border border-zinc-800/50 opacity-50">
+                                                <span className="text-lg opacity-30">📦</span>
+                                                <span className="text-xs text-zinc-600">No artifact</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* VS Splatter */}
@@ -366,10 +480,65 @@ export default async function WeekPage({
                                         <div className={`text-6xl sm:text-8xl font-black tracking-tighter transition-all ${userLost ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.3)]' : 'text-zinc-600'}`}>
                                             {(oppScore || 0).toFixed(1)}
                                         </div>
+
+                                        {/* Opponent Artifact Badge - Revealed after battle */}
+                                        {isFinal && opponentPowerup ? (
+                                            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${opponentPowerup.powerup.rarity === 'legendary'
+                                                    ? 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]'
+                                                    : opponentPowerup.powerup.rarity === 'epic'
+                                                        ? 'bg-purple-500/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                                                        : opponentPowerup.powerup.rarity === 'rare'
+                                                            ? 'bg-blue-500/10 border-blue-500/30'
+                                                            : 'bg-zinc-800/50 border-zinc-700'
+                                                }`}>
+                                                <span className="text-lg">⚔️</span>
+                                                <div className="text-left">
+                                                    <div className={`text-xs font-bold ${opponentPowerup.powerup.rarity === 'legendary' ? 'text-amber-400'
+                                                            : opponentPowerup.powerup.rarity === 'epic' ? 'text-purple-400'
+                                                                : opponentPowerup.powerup.rarity === 'rare' ? 'text-blue-400'
+                                                                    : 'text-zinc-400'
+                                                        }`}>
+                                                        {opponentPowerup.powerup.name}
+                                                    </div>
+                                                    <div className="text-[10px] text-zinc-500">
+                                                        {opponentPowerup.powerup.kind === 'multiplier'
+                                                            ? `${opponentPowerup.powerup.value}x multiplier`
+                                                            : opponentPowerup.powerup.scope === 'opponent'
+                                                                ? `-${opponentPowerup.powerup.value} pts curse`
+                                                                : `+${opponentPowerup.powerup.value} pts`
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : isFinal ? (
+                                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900/50 border border-zinc-800/50 opacity-50">
+                                                <span className="text-lg opacity-30">📦</span>
+                                                <span className="text-xs text-zinc-600">No artifact</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900/50 border border-zinc-800/50 opacity-50">
+                                                <span className="text-lg opacity-30">❓</span>
+                                                <span className="text-xs text-zinc-600">Unknown</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* ═══════════════════════════════════════════════════════════════ */}
+                    {/* BATTLE RECAP (Post-Battle Analysis) */}
+                    {/* ═══════════════════════════════════════════════════════════════ */}
+                    {isFinal && userTeam && oppTeam && (
+                        <BattleRecap
+                            userScore={userScore || 0}
+                            oppScore={oppScore || 0}
+                            userTeamName={userTeam.name}
+                            oppTeamName={oppTeam.name}
+                            activePowerup={activePowerup}
+                            allOffers={allOffers}
+                        />
                     )}
                 </section>
 

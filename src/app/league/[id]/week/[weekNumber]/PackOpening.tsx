@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { selectPowerup } from "./actions";
+import { selectPowerup, rerollOffers } from "./actions";
 
 interface PowerupOffer {
     id: string;
@@ -22,6 +22,7 @@ interface PackOpeningProps {
     weekId: string;
     weekNumber: number;
     offers: PowerupOffer[];
+    rerolls: number; // Number of rerolls available
 }
 
 const RARITY_CONFIG: Record<string, { bg: string; text: string; border: string; glow: string; icon: string }> = {
@@ -36,9 +37,12 @@ export default function PackOpening({
     teamId,
     weekId,
     weekNumber,
-    offers
+    offers,
+    rerolls
 }: PackOpeningProps) {
     const [isPending, setIsPending] = useState(false);
+    const [isRerolling, setIsRerolling] = useState(false);
+    const [viewState, setViewState] = useState<'chest' | 'opening' | 'selection'>('chest');
 
     const handleSelect = async (powerupId: string) => {
         setIsPending(true);
@@ -57,10 +61,113 @@ export default function PackOpening({
         }
     };
 
-    if (offers.length === 0) return null;
+    const handleOpenPack = () => {
+        setViewState('opening');
+        setTimeout(() => {
+            setViewState('selection');
+        }, 1500);
+    };
 
+    const handleReroll = async () => {
+        if (rerolls <= 0) return;
+        setIsRerolling(true);
+        try {
+            const result = await rerollOffers(leagueId, teamId, weekId, weekNumber);
+            if (!result.success) {
+                console.error(result.error);
+            }
+            // Page will revalidate and show new offers
+        } catch (error) {
+            console.error(error);
+        }
+        setIsRerolling(false);
+    };
+
+    if (viewState === 'chest' || viewState === 'charging') {
+        const isCharging = viewState === 'charging';
+        return (
+            <div className="relative min-h-[500px] flex items-center justify-center p-8 bg-black/60 backdrop-blur-md border border-purple-500/20 rounded-[2.5rem] overflow-hidden group perspective-[1200px]">
+                {/* Ambient Background Pulse */}
+                <div className={`absolute inset-0 bg-gradient-to-t from-amber-900/10 via-transparent to-transparent ${isCharging ? 'animate-pulse opacity-50' : 'animate-pulse'}`} />
+
+                {/* Rotating Beams (God Rays) - Only when charging */}
+                {isCharging && (
+                    <div className="absolute inset-0 flex items-center justify-center animate-spin-slow opacity-30 pointer-events-none">
+                        <div className="w-[200%] h-[200%] bg-[conic-gradient(from_0deg,transparent_0deg,rgba(251,191,36,0.2)_20deg,transparent_40deg,rgba(251,191,36,0.2)_60deg,transparent_80deg,rgba(251,191,36,0.2)_100deg,transparent_120deg)]" />
+                    </div>
+                )}
+
+                <div className="text-center space-y-16 relative z-10 w-full max-w-md flex flex-col items-center">
+
+                    {/* The Treasure Chest */}
+                    <div
+                        className={`relative w-48 h-36 cursor-pointer transition-transform duration-300 ${isCharging ? 'animate-levitate' : 'hover:scale-105 active:scale-95 animate-float'}`}
+                        onClick={!isCharging ? handleOpenPack : undefined}
+                    >
+                        {/* Glow Behind */}
+                        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-600 blur-[80px] rounded-full transition-all duration-300 ${isCharging ? 'opacity-100 scale-150 animate-pulse' : 'opacity-20 animate-pulse'}`} />
+
+                        {/* Chest Body Wrapper for Rumble */}
+                        <div className={`relative w-full h-full ${isCharging ? 'animate-rumble' : ''}`}>
+                            {/* Chest Base */}
+                            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-[#8B4513] to-[#4A2511] rounded-b-2xl border-4 border-[#DAA520] shadow-2xl z-20 flex items-center justify-center overflow-hidden">
+                                {/* Wood Grain / Texture */}
+                                <div className="absolute inset-0 opacity-20 bg-[repeating-linear-gradient(45deg,black,transparent_5px)]" />
+                                {/* Keyhole */}
+                                <div className="w-8 h-8 rounded-full bg-[#DAA520] flex items-center justify-center shadow-lg transform translate-y-2">
+                                    <div className="w-2 h-3 bg-black rounded-full" />
+                                    {isCharging && <div className="absolute inset-0 bg-yellow-400 blur-sm animate-pulse" />}
+                                </div>
+                            </div>
+
+                            {/* Chest Lid */}
+                            <div className={`
+                                absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#A0522D] to-[#8B4513] rounded-t-2xl border-4 border-[#DAA520] z-30 origin-bottom transition-all
+                                ${isCharging ? 'translate-y-[-2px]' : ''}
+                            `}>
+                                {/* Lid Detail */}
+                                <div className="absolute inset-x-4 top-2 h-10 border-2 border-[#DAA520]/50 rounded-t-lg" />
+                            </div>
+
+                            {/* Interact Hint */}
+                            {!isCharging && (
+                                <div className="absolute -top-12 left-1/2 -translate-x-1/2 animate-bounce">
+                                    <span className="text-2xl filter drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">✨</span>
+                                </div>
+                            )}
+
+                            {/* Leaking Light (Cracks) */}
+                            {isCharging && (
+                                <div className="absolute inset-x-0 top-16 h-1 bg-yellow-400 blur-md z-40 animate-pulse" />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h2 className={`text-3xl font-black text-white uppercase tracking-tighter transition-all duration-300 ${isCharging ? 'text-amber-300 scale-110 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]' : ''}`}>
+                            {isCharging ? 'Unsealing...' : 'Ancient Chest'}
+                        </h2>
+
+                        {!isCharging && (
+                            <button
+                                onClick={handleOpenPack}
+                                className="px-8 py-3 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-black uppercase tracking-widest rounded-xl hover:from-amber-500 hover:to-amber-400 hover:scale-105 transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                            >
+                                Open Chest
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // STATE: SELECTION
     return (
-        <div className="relative p-8 lg:p-12 bg-black/60 backdrop-blur-md border border-purple-500/20 rounded-[2.5rem] overflow-hidden">
+        <div className="relative p-8 lg:p-12 bg-black/60 backdrop-blur-md border border-purple-500/20 rounded-[2.5rem] overflow-hidden animate-[fadeIn_0.5s_ease-out]">
+            {/* White Flash Overlay on Enter */}
+            <div className="absolute inset-0 bg-white pointer-events-none z-50 animate-flash" />
+
             {/* Background Effects */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5" />
 
@@ -68,26 +175,47 @@ export default function PackOpening({
                 <div className="space-y-2">
                     <div className="flex items-center justify-center gap-4">
                         <div className="h-px w-12 bg-gradient-to-l from-purple-500/50 to-transparent" />
-                        <span className="text-sm font-black text-purple-400 uppercase tracking-[.4em]">Ancient Spoils Found</span>
+                        <span className="text-sm font-black text-purple-400 uppercase tracking-[.4em] animate-[slideInUp_0.5s_ease-out]">Cache Decrypted</span>
                         <div className="h-px w-12 bg-gradient-to-r from-purple-500/50 to-transparent" />
                     </div>
-                    <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white mb-2">WEEKLY SUPPLY DROP</h2>
-                    <p className="text-zinc-500 text-sm max-w-lg mx-auto uppercase tracking-widest font-bold">Choose one artifact to empower your legion for this chapter</p>
+                    <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white mb-2 animate-[fadeIn_0.8s_ease-out]">SELECT ARTIFACT</h2>
+                    <p className="text-zinc-500 text-sm max-w-lg mx-auto uppercase tracking-widest font-bold animate-[fadeIn_1s_ease-out]">Choose one artifact to empower your legion for this chapter</p>
+
+                    {/* Reroll Button */}
+                    {rerolls > 0 && (
+                        <button
+                            onClick={handleReroll}
+                            disabled={isRerolling || isPending}
+                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600/80 to-purple-600/80 text-white text-xs font-bold uppercase tracking-widest rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-indigo-400/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+                        >
+                            <span className="text-lg">🔄</span>
+                            {isRerolling ? "Rerolling..." : `Reroll (${rerolls} left)`}
+                        </button>
+                    )}
+                    {rerolls === 0 && (
+                        <div className="mt-4 text-xs text-zinc-600 uppercase tracking-widest">
+                            No rerolls remaining
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {offers.map((offer) => {
+                    {offers.map((offer, index) => {
                         const p = offer.powerup;
                         const config = RARITY_CONFIG[p.rarity] || RARITY_CONFIG.common;
+                        // Staggered delay for card reveal
+                        const delay = `${index * 100 + 300}ms`; // +300ms for flash to settle
 
                         return (
                             <div
                                 key={offer.id}
                                 onClick={() => !isPending && handleSelect(p.id)}
+                                style={{ animationDelay: delay }}
                                 className={`
                                     relative group cursor-pointer rounded-2xl p-6 border transition-all duration-500 hover:scale-105 active:scale-95
                                     bg-gradient-to-br ${config.bg} ${config.border} ${config.glow}
                                     ${isPending ? 'opacity-50 pointer-events-none' : ''}
+                                    animate-[scaleIn_0.5s_cubic-bezier(0.175,0.885,0.32,1.275)_both]
                                 `}
                             >
                                 {/* Selection Ring (Glow) */}
@@ -118,7 +246,7 @@ export default function PackOpening({
 
                                     <div className="pt-4 border-t border-white/10 mt-auto">
                                         <button className={`w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${p.rarity === 'legendary' ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20' :
-                                                'bg-white/10 text-white group-hover:bg-white/20'
+                                            'bg-white/10 text-white group-hover:bg-white/20'
                                             }`}>
                                             Claim Artifact
                                         </button>
