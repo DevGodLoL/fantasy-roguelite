@@ -111,8 +111,8 @@ export default function CampaignMapView({ leagueId, weeks, stats, teamName }: Ca
                             </div>
                             {stats.streak.count > 0 && (
                                 <div className={`px-4 py-2 rounded-xl flex items-center gap-2 ${stats.streak.type === 'W'
-                                        ? 'bg-emerald-500/10 border border-emerald-500/20'
-                                        : 'bg-red-500/10 border border-red-500/20'
+                                    ? 'bg-emerald-500/10 border border-emerald-500/20'
+                                    : 'bg-red-500/10 border border-red-500/20'
                                     }`}>
                                     <span className="text-lg">{stats.streak.type === 'W' ? '🔥' : '💀'}</span>
                                     <span className={`text-lg font-black ${stats.streak.type === 'W' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -162,6 +162,7 @@ export default function CampaignMapView({ leagueId, weeks, stats, teamName }: Ca
                         const isBoss = week.number === weeks.length;
 
                         // Determine visual state
+                        const isPlayoff = week.number >= 15;
                         let nodeStyles = {
                             bg: "bg-zinc-900",
                             border: "border-zinc-700",
@@ -180,15 +181,28 @@ export default function CampaignMapView({ leagueId, weeks, stats, teamName }: Ca
                             };
                         } else if (week.isCurrent) {
                             nodeStyles = {
-                                bg: "bg-purple-600",
-                                border: "border-purple-400",
-                                glow: "shadow-[0_0_30px_rgba(147,51,234,0.5)] ring-4 ring-purple-500/20",
-                                icon: <Swords size={22} className="text-white animate-pulse" />,
+                                bg: isPlayoff ? "bg-amber-600" : "bg-purple-600",
+                                border: isPlayoff ? "border-amber-400" : "border-purple-400",
+                                glow: isPlayoff
+                                    ? "shadow-[0_0_30px_rgba(251,191,36,0.5)] ring-4 ring-amber-500/20"
+                                    : "shadow-[0_0_30px_rgba(147,51,234,0.5)] ring-4 ring-purple-500/20",
+                                icon: isPlayoff
+                                    ? <Trophy size={22} className="text-white animate-pulse" />
+                                    : <Swords size={22} className="text-white animate-pulse" />,
                                 textColor: "text-white"
+                            };
+                        } else if (isPlayoff && !week.isCompleted) {
+                            // Locked playoff floors get golden styling
+                            nodeStyles = {
+                                bg: "bg-amber-950/30",
+                                border: "border-amber-500/30",
+                                glow: "",
+                                icon: <Trophy size={20} className="text-amber-500/50" />,
+                                textColor: "text-amber-500/50"
                             };
                         }
 
-                        // Boss override
+                        // Boss override (final floor)
                         if (isBoss) {
                             nodeStyles.icon = <Trophy size={22} className={week.isCompleted ? 'text-amber-400' : week.isCurrent ? 'text-white' : 'text-amber-500/50'} />;
                             if (!week.isCompleted && !week.isCurrent) {
@@ -223,12 +237,16 @@ export default function CampaignMapView({ leagueId, weeks, stats, teamName }: Ca
                                 {/* Node Info */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${week.isCurrent ? 'text-purple-300' : 'text-zinc-500'
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${week.isCurrent
+                                            ? (isPlayoff ? 'text-amber-300' : 'text-purple-300')
+                                            : isPlayoff
+                                                ? 'text-amber-500/70'
+                                                : 'text-zinc-500'
                                             }`}>
-                                            {isBoss ? '👑 Final Boss' : `Floor ${week.number}`}
+                                            {isBoss ? '👑 Championship' : isPlayoff ? `🏆 Playoff Round ${week.number - 14}` : `Floor ${week.number}`}
                                         </span>
                                         {week.isCurrent && (
-                                            <span className="flex h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
+                                            <span className={`flex h-2 w-2 rounded-full ${isPlayoff ? 'bg-amber-400' : 'bg-purple-400'} animate-pulse`} />
                                         )}
                                     </div>
                                     <h3 className={`text-lg font-bold font-serif italic truncate ${nodeStyles.textColor}`}>
@@ -262,8 +280,8 @@ export default function CampaignMapView({ leagueId, weeks, stats, teamName }: Ca
                         <span>Locked</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full bg-amber-950/30 border border-amber-500/30" />
-                        <span>Boss</span>
+                        <div className="w-4 h-4 rounded-full bg-amber-950/50 border border-amber-500/40 shadow-[0_0_8px_rgba(251,191,36,0.3)]" />
+                        <span className="text-amber-500/80">Playoffs</span>
                     </div>
                 </div>
             </main>

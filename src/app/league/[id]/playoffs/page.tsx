@@ -2,7 +2,7 @@ import { db } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
-const CHAPTER_NAMES: Record<number, string> = {
+const FLOOR_NAMES: Record<number, string> = {
     15: "The Reckoning",
     16: "Phoenix Dawn",
     17: "Glory Eternal",
