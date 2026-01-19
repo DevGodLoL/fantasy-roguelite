@@ -13,14 +13,25 @@ async function main() {
 
   // Cleanup
   try {
+    await prisma.league.updateMany({
+      data: {
+        championTeamId: null,
+        consolationWinnerId: null
+      }
+    });
+    await prisma.teamTitle.deleteMany();
+    await prisma.teamMission.deleteMany();
+    await prisma.teamPowerup.deleteMany();
+    await prisma.teamPowerupOffer.deleteMany();
+    await prisma.leagueTransaction.deleteMany();
     await prisma.waiverClaim.deleteMany();
     await prisma.draftPick.deleteMany();
     await prisma.draft.deleteMany();
     await prisma.rosterSlot.deleteMany();
-    await prisma.teamPowerup.deleteMany();
-    await prisma.teamPowerupOffer.deleteMany();
     await prisma.matchup.deleteMany();
     await prisma.teamWeekStats.deleteMany();
+    await prisma.playerPerformance.deleteMany();
+    await prisma.playerTrait.deleteMany();
     await prisma.week.deleteMany();
     await prisma.team.deleteMany();
     await prisma.leagueSettings.deleteMany();
@@ -30,7 +41,7 @@ async function main() {
     await prisma.user.deleteMany();
     await prisma.powerup.deleteMany();
   } catch (e) {
-    console.log("Cleanup warning (some tables may not exist yet):", (e as Error).message);
+    console.log("Cleanup warning:", (e as Error).message);
   }
 
   console.log("1) Creating Admin User...");
@@ -451,6 +462,25 @@ async function main() {
       rarity: "common",
       kind: "multiplier",
       value: 1.05,
+    },
+    {
+      code: "TITAN_SLAYER",
+      name: "Titan Slayer",
+      description: "Deals massive damage to Bosses. +40 pts in Playoff matchups.",
+      rarity: "epic",
+      kind: "bonus_points",
+      value: 40.0,
+      isPlayoffOnly: true,
+    },
+    {
+      code: "AEGIS_OF_CHAMPIONS",
+      name: "Aegis of Champions",
+      description: "Reduces opponent's score by 25% in the Playoffs.",
+      rarity: "legendary",
+      scope: "opponent",
+      kind: "multiplier",
+      value: 0.75,
+      isPlayoffOnly: true,
     },
   ];
 

@@ -32,6 +32,13 @@ model League {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Playoff Settings
+  playoffTeams       Int      @default(6)
+  regularSeasonWeeks Int      @default(14)
+  seasonStatus       String   @default("regular") // regular | playoffs | complete
+  championTeamId     String?
+  consolationWinnerId String?
+
   owner        User            @relation(fields: [ownerId], references: [id])
   members      LeagueMember[]
   teams        Team[]
@@ -89,6 +96,11 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Playoff/Rewards Stats
+  playoffSeed       Int?
+  nextSeasonBonusGold Int     @default(0)
+  nextSeasonBonusRerolls Int  @default(0)
+
   league         League             @relation(fields: [leagueId], references: [id])
   owner          User               @relation(fields: [ownerId], references: [id])
   rosterSlots    RosterSlot[]
@@ -105,6 +117,7 @@ model Team {
   waiverClaims   WaiverClaim[]
   transactions   LeagueTransaction[]
   missions       TeamMission[]
+  titles         TeamTitle[]
 
   @@unique([leagueId, ownerId])
 }
@@ -115,6 +128,9 @@ model Week {
   number    Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Week Type
+  type      String   @default("regular") // regular | wildcard | semifinal | championship | consolation
 
   league         League             @relation(fields: [leagueId], references: [id])
   matchups       Matchup[]
@@ -152,6 +168,10 @@ model Matchup {
   homeScore Float  @default(0)
   awayScore Float  @default(0)
   status    String @default("scheduled") // scheduled | live | final
+
+  // Playoff Info
+  bracket   String? // winners | losers
+  round     String? // wildcard | semifinal | championship | consolation_semi | consolation_final | toilet_bowl
 
   league   League @relation(fields: [leagueId], references: [id])
   week     Week   @relation(fields: [weekId], references: [id])
@@ -244,6 +264,7 @@ model Powerup {
   // New Fields for Shop
   type        String  @default("card") // card (consumable artifact) | relic (persistent shop item)
   price       Int     @default(0)
+  isPlayoffOnly Boolean @default(false)
 
   teamPowerups      TeamPowerup[]
   teamPowerupOffers TeamPowerupOffer[]
@@ -373,3 +394,13 @@ model TeamMission {
   
   @@unique([teamId, weekId, code]) // Only one of each mission type per team per week
 }
+
+model TeamTitle {
+  id     String @id @default(cuid())
+  teamId String
+  title  String
+  year   Int
+
+  team Team @relation(fields: [teamId], references: [id])
+}
+

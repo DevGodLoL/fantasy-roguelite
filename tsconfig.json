@@ -39,6 +39,7 @@
   "exclude": [
     "node_modules",
     "prisma.config.ts",
-    "scripts"
+    "scripts",
+    "backups"
   ]
 }
