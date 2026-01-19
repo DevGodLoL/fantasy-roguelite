@@ -156,16 +156,16 @@ export default function LineupManager({
                 <div className="flex items-center gap-4 shrink-0">
                     {!isFinal && !readOnly && !isInvalidTarget && (
                         <div className={`
-                            text-[10px] font-black uppercase tracking-widest transition-all
-                            ${isSelected ? "text-purple-400" : isValidTarget ? "text-emerald-400" : "text-zinc-600 opacity-0 group-hover:opacity-100"}
+                            text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all
+                            ${isSelected ? "text-purple-400" : isValidTarget ? "text-emerald-400" : "text-zinc-600 opacity-0 group-hover:opacity-100 hidden sm:block"}
                         `}>
-                            {isSelected ? "[Cancel]" : isValidTarget ? "Deploy Here" : "Relocate"}
+                            {isSelected ? "[Cancel]" : isValidTarget ? "Deploy" : "Relocate"}
                         </div>
                     )}
 
                     {isFinal && (
                         <div className={`text-xl font-black ${(slot.player?.points || 0) > 15 ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' :
-                                (slot.player?.points || 0) > 0 ? 'text-white' : 'text-zinc-700'
+                            (slot.player?.points || 0) > 0 ? 'text-white' : 'text-zinc-700'
                             }`}>
                             {slot.player?.points?.toFixed(1) || "0.0"}
                         </div>

@@ -1,6 +1,7 @@
 import { db } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PERSONALITIES, getRandomQuote, Archetype } from "@/lib/game-data/personalities";
 
 import StandingsTable from "./StandingsTable";
 import LeagueActivity from "./LeagueActivity";
@@ -66,6 +67,7 @@ export default async function LeaguePage({
     pf: number;
     pa: number;
     streak: { type: 'W' | 'L' | 'T'; count: number };
+    archetype: Archetype;
   }>();
 
   // Initialize
@@ -79,7 +81,8 @@ export default async function LeaguePage({
       ties: 0,
       pf: 0,
       pa: 0,
-      streak: { type: 'W', count: 0 }
+      streak: { type: 'W', count: 0 },
+      archetype: team.archetype as Archetype
     });
   }
 
@@ -217,23 +220,23 @@ export default async function LeaguePage({
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
             <CommanderBadge profile={commanderProfile} />
 
-            <div className="h-10 w-px bg-white/10 mx-2" />
+            <div className="hidden sm:block h-10 w-px bg-white/10 mx-2" />
 
-            <div className="flex gap-6">
-              <div>
-                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Rank</div>
+            <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 w-full sm:w-auto p-4 sm:p-0 bg-white/[0.03] sm:bg-transparent rounded-xl border border-white/5 sm:border-none">
+              <div className="flex-1 sm:flex-none">
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Rank</div>
                 <div className="text-xl font-black text-white">#{userRank}</div>
               </div>
-              <div>
-                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Record</div>
+              <div className="flex-1 sm:flex-none">
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Record</div>
                 <div className="text-xl font-black text-white">{userStats?.wins}-{userStats?.losses}</div>
               </div>
-              <div>
-                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Artifacts</div>
-                <div className="text-xl font-black text-amber-400">{userArtifacts}</div>
+              <div className="flex-1 sm:flex-none">
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-1">Vault</div>
+                <div className="text-xl font-black text-amber-400">{userTeam.gold}g</div>
               </div>
             </div>
           </div>
@@ -292,49 +295,72 @@ export default async function LeaguePage({
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-amber-900/20 opacity-50 group-hover:opacity-70 transition-opacity" />
 
                 <div className="relative p-8">
-                  <div className="flex justify-between items-start mb-8">
+                  <div className="flex justify-between items-center mb-10">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-xs font-black uppercase tracking-widest text-red-500">Live Battle</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Live Simulation</span>
                       </div>
-                      <h2 className="text-2xl font-black uppercase italic">The Arena</h2>
+                      <h2 className="text-xl sm:text-2xl font-black uppercase italic">The Arena</h2>
                     </div>
                     <Link
                       href={`/league/${id}/week/${currentWeek.number}`}
-                      className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-black uppercase text-xs hover:scale-105 transition-transform"
+                      className="shrink-0 flex items-center gap-2 px-6 py-2.5 bg-white text-black rounded-xl font-black uppercase text-[10px] hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                     >
-                      Enter Battle <ArrowUpRight size={14} />
+                      Enter <ArrowUpRight size={14} className="hidden sm:inline" />
                     </Link>
                   </div>
 
-                  {/* Matchup Row */}
-                  <div className="flex items-center justify-between gap-4">
+                  {/* Matchup Layout - Responsive Stack */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-8 sm:gap-4 relative">
                     {/* YOU */}
-                    <div className="flex-1 flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-emerald-900/50 border-2 border-emerald-500/30 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-                        🛡️
+                    <div className="flex-1 flex flex-col items-center gap-4 w-full sm:w-auto">
+                      <div className="relative group/unit">
+                        <div className="w-20 h-20 sm:w-16 sm:h-16 rounded-2xl sm:rounded-full bg-emerald-900/40 border-2 border-emerald-500/30 flex items-center justify-center text-4xl sm:text-3xl shadow-[0_0_30px_rgba(16,185,129,0.15)] group-hover/unit:scale-110 transition-transform">
+                          🛡️
+                        </div>
+                        <div className="absolute -top-1 -right-1 bg-emerald-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest sm:hidden">YOU</div>
                       </div>
                       <div className="text-center">
-                        <div className="font-black text-lg leading-none">{userTeam.name}</div>
-                        <div className="text-xs font-bold text-emerald-500 mt-1">{userStats?.wins}-{userStats?.losses}</div>
+                        <div className="font-black text-xl sm:text-lg leading-none uppercase tracking-tight">{userTeam.name}</div>
+                        <div className="text-[10px] font-black text-emerald-500 mt-1.5 px-2 py-0.5 bg-emerald-500/10 rounded uppercase tracking-widest">{userStats?.wins}-{userStats?.losses}</div>
                       </div>
                     </div>
 
                     {/* VS */}
-                    <div className="flex flex-col items-center justify-center w-24">
-                      <div className="text-4xl font-black italic text-zinc-700">VS</div>
-                      <div className="text-[10px] font-black uppercase text-zinc-600 tracking-widest mt-1">Week {currentWeek.number}</div>
+                    <div className="flex sm:flex-col items-center justify-center gap-4 sm:gap-1 opacity-50">
+                      <div className="h-px w-12 bg-gradient-to-r from-transparent to-zinc-700 sm:hidden" />
+                      <div className="text-2xl sm:text-4xl font-black italic text-zinc-700">VS</div>
+                      <div className="h-px w-12 bg-gradient-to-l from-transparent to-zinc-700 sm:hidden" />
+                      <div className="text-[10px] font-black uppercase text-zinc-600 tracking-widest mt-1">Floor {currentWeek.number}</div>
                     </div>
 
                     {/* OPPONENT */}
-                    <div className="flex-1 flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-red-900/50 border-2 border-red-500/30 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(239,68,68,0.2)]">
-                        ⚔️
+                    <div className="flex-1 flex flex-col items-center gap-4 w-full sm:w-auto relative group/opp">
+                      <div className="w-20 h-20 sm:w-16 sm:h-16 rounded-2xl sm:rounded-full bg-red-900/40 border-2 border-red-500/30 flex items-center justify-center text-4xl sm:text-3xl shadow-[0_0_30px_rgba(239,68,68,0.15)] hover:scale-110 transition-transform cursor-help">
+                        {PERSONALITIES[opponent.archetype as Archetype]?.icon || "⚔️"}
                       </div>
                       <div className="text-center">
-                        <div className="font-black text-lg leading-none">{opponent.name}</div>
-                        <div className="text-xs font-bold text-red-500 mt-1">{opponentStats.wins}-{opponentStats.losses}</div>
+                        <div className="font-black text-xl sm:text-lg leading-none uppercase tracking-tight text-zinc-300 group-hover/opp:text-red-400 transition-colors">
+                          {opponent.name}
+                        </div>
+                        <div className="flex items-center justify-center gap-2 mt-2">
+                          <div className="text-[10px] font-black text-red-500 px-2 py-0.5 bg-red-500/10 rounded uppercase tracking-widest">
+                            {opponentStats.wins}-{opponentStats.losses}
+                          </div>
+                          <div className={`text-[10px] font-black uppercase tracking-widest ${PERSONALITIES[opponent.archetype as Archetype]?.color || 'text-zinc-500'}`}>
+                            {PERSONALITIES[opponent.archetype as Archetype]?.title || "The Rival"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Hover Quote Bubble */}
+                      <div className="absolute -bottom-16 sm:-bottom-12 left-1/2 -translate-x-1/2 w-48 sm:w-64 opacity-0 group-hover/opp:opacity-100 transition-all pointer-events-none z-30">
+                        <div className="bg-zinc-900/95 border border-red-500/20 p-3 rounded-xl shadow-2xl backdrop-blur-md">
+                          <div className="text-red-400 font-serif italic text-xs mb-1">"{getRandomQuote(opponent.archetype as Archetype)}"</div>
+                          <div className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter">— {PERSONALITIES[opponent.archetype as Archetype]?.title}</div>
+                        </div>
+                        <div className="w-2 h-2 bg-zinc-900 border-l border-t border-red-500/20 rotate-45 absolute -top-1 left-1/2 -translate-x-1/2" />
                       </div>
                     </div>
                   </div>
@@ -384,7 +410,7 @@ export default async function LeaguePage({
                   <Coins size={20} className="text-amber-500" />
                   <h3 className="text-sm font-black uppercase tracking-wider text-zinc-400">Treasury</h3>
                 </div>
-                <div className="text-3xl font-black text-white mb-1">100g</div>
+                <div className="text-3xl font-black text-white mb-1">{userTeam.gold}g</div>
                 <div className="text-xs text-amber-500/60 font-bold uppercase tracking-widest">Available Gold</div>
                 <Link href={`/league/${id}/shop`} className="text-[10px] underline text-zinc-500 hover:text-white mt-2 block">Visit Shop</Link>
               </div>

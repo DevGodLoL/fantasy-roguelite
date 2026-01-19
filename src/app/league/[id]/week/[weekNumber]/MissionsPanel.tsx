@@ -40,10 +40,10 @@ export default function MissionsPanel({ missions, isFinal }: MissionsPanelProps)
                 </div>
                 {isFinal && (
                     <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${completedCount === missions.length
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            : completedCount > 0
-                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : completedCount > 0
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
                         }`}>
                         {completedCount}/{missions.length} Complete
                     </div>
@@ -59,33 +59,33 @@ export default function MissionsPanel({ missions, isFinal }: MissionsPanelProps)
                         <div
                             key={mission.id}
                             className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border transition-all ${mission.isCompleted
-                                    ? 'bg-emerald-500/10 border-emerald-500/30'
-                                    : isFinal
-                                        ? 'bg-red-500/5 border-red-500/20 opacity-60'
-                                        : 'bg-zinc-900/50 border-zinc-700/50'
+                                ? 'bg-emerald-500/10 border-emerald-500/30'
+                                : isFinal
+                                    ? 'bg-red-500/5 border-red-500/20 opacity-60'
+                                    : 'bg-zinc-900/50 border-zinc-700/50'
                                 }`}
                         >
                             {/* Mission Info */}
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-white truncate">{mission.name}</span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs font-black text-white uppercase tracking-tight">{mission.name}</span>
                                     {mission.isCompleted && (
                                         <span className="text-emerald-400 text-sm">✓</span>
                                     )}
                                 </div>
-                                <p className="text-[10px] text-zinc-400 truncate">{mission.description}</p>
+                                <p className="text-[10px] text-zinc-400 mt-0.5 leading-relaxed">{mission.description}</p>
 
                                 {/* Compact Progress Bar (only for final) */}
                                 {isFinal && (
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden shadow-inner">
                                             <div
-                                                className={`h-full rounded-full ${mission.isCompleted ? 'bg-emerald-500' : 'bg-zinc-600'
+                                                className={`h-full rounded-full transition-all duration-1000 ${mission.isCompleted ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' : 'bg-zinc-600'
                                                     }`}
                                                 style={{ width: `${progressPercent}%` }}
                                             />
                                         </div>
-                                        <span className="text-[9px] text-zinc-500 shrink-0">
+                                        <span className="text-[9px] font-mono text-zinc-500 shrink-0">
                                             {mission.progress.toFixed(0)}/{mission.targetValue}
                                         </span>
                                     </div>
@@ -94,8 +94,8 @@ export default function MissionsPanel({ missions, isFinal }: MissionsPanelProps)
 
                             {/* Reward Badge - Compact */}
                             <div className={`shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs ${mission.isCompleted
-                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                    : 'bg-zinc-800/50 text-zinc-300'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-zinc-800/50 text-zinc-300'
                                 }`}>
                                 <span>{REWARD_ICONS[mission.rewardType] || "🎁"}</span>
                                 <span className="font-bold">+{mission.rewardValue}</span>

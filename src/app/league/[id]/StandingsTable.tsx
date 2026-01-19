@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useState } from "react";
+import { PERSONALITIES, Archetype } from "@/lib/game-data/personalities";
 
 interface TeamStats {
     id: string;
@@ -13,6 +14,7 @@ interface TeamStats {
     pf: number;
     pa: number;
     streak: { type: 'W' | 'L' | 'T'; count: number };
+    archetype: Archetype;
 }
 
 interface StandingsTableProps {
@@ -98,17 +100,17 @@ export default function StandingsTable({ leagueId, teams }: StandingsTableProps)
 
             <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-sm text-left border-collapse">
-                    <thead className="bg-gradient-to-r from-zinc-900 to-black uppercase text-[8px] sm:text-[10px] font-black tracking-[0.2em] sm:tracking-[0.3em] text-zinc-500 border-b border-white/5">
+                    <thead className="bg-gradient-to-r from-zinc-900 to-black uppercase text-[7px] sm:text-[10px] font-black tracking-[0.1em] sm:tracking-[0.3em] text-zinc-500 border-b border-white/5">
                         <tr>
-                            <th className="px-3 sm:px-6 py-4 sm:py-6 w-12 sm:w-20 text-center">Rank</th>
-                            <th className="px-3 sm:px-6 py-4 sm:py-6 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('name')}>
+                            <th className="px-2 sm:px-6 py-4 sm:py-6 w-10 sm:w-20 text-center">Rank</th>
+                            <th className="px-2 sm:px-6 py-4 sm:py-6 cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('name')}>
                                 Commander {getSortIndicator('name')}
                             </th>
-                            <th className="px-3 sm:px-6 py-4 sm:py-6 text-center cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('wins')}>
-                                Campaign {getSortIndicator('wins')}
+                            <th className="px-2 sm:px-6 py-4 sm:py-6 text-center cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('wins')}>
+                                Record {getSortIndicator('wins')}
                             </th>
-                            <th className="px-3 sm:px-6 py-4 sm:py-6 text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('pf')}>
-                                Prowess {getSortIndicator('pf')}
+                            <th className="px-2 sm:px-6 py-4 sm:py-6 text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSort('pf')}>
+                                Pts {getSortIndicator('pf')}
                             </th>
                             <th className="px-3 sm:px-6 py-4 sm:py-6 text-center hidden md:table-cell">
                                 Momentum
@@ -132,42 +134,49 @@ export default function StandingsTable({ leagueId, teams }: StandingsTableProps)
                                         `}
                                     >
                                         {/* Rank */}
-                                        <td className="px-3 sm:px-6 py-4 sm:py-8 text-center relative">
+                                        <td className="px-2 sm:px-6 py-4 sm:py-8 text-center relative">
                                             {isUser && (
-                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 sm:h-12 bg-purple-500 rounded-r-full shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 sm:h-12 bg-purple-500 rounded-r-full shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
                                             )}
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span className={`text-xl sm:text-2xl font-black italic tracking-tighter ${config.text}`}>
+                                            <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                                                <span className={`text-lg sm:text-2xl font-black italic tracking-tighter ${config.text}`}>
                                                     {rank < 10 ? `0${rank}` : rank}
                                                 </span>
-                                                {rank <= 3 && <span className="text-[10px] sm:text-xs">{config.icon}</span>}
+                                                {rank <= 3 && <span className="text-[8px] sm:text-xs">{config.icon}</span>}
                                             </div>
                                         </td>
 
                                         {/* Commander */}
-                                        <td className="px-3 sm:px-6 py-4 sm:py-8 max-w-[120px] sm:max-w-none">
+                                        <td className="px-2 sm:px-6 py-4 sm:py-8 min-w-0">
                                             <Link
                                                 href={`/league/${leagueId}/team/${team.id}`}
-                                                className="group/link flex items-center gap-3 sm:gap-5 outline-none"
+                                                className="group/link flex items-center gap-2 sm:gap-5 outline-none overflow-hidden"
                                             >
                                                 {/* Sigil */}
                                                 <div className={`
-                                                    relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-sm sm:text-xl font-black tracking-tighter shrink-0
+                                                    relative w-8 h-8 sm:w-14 sm:h-14 rounded-lg sm:rounded-2xl flex items-center justify-center text-xs sm:text-xl font-black tracking-tighter shrink-0
                                                     transition-all duration-500 group-hover/link:scale-110 group-hover/link:rotate-3
                                                     ${config.bg} ${config.border} border-2 shadow-lg ${config.glow}
                                                 `}>
                                                     {team.name.charAt(0)}
-                                                    {/* Corner Accent */}
                                                     <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 border-t-2 border-r-2 border-white/20 rounded-tr-sm" />
                                                 </div>
 
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className={`text-sm sm:text-lg font-black uppercase tracking-tight transition-colors truncate ${isUser ? 'text-purple-300' : 'text-white group-hover/link:text-purple-400'}`}>
-                                                        {team.name}
-                                                    </span>
+                                                    <div className="flex items-center gap-1.5 sm:gap-2">
+                                                        <span className={`text-xs sm:text-lg font-black uppercase tracking-tight transition-colors line-clamp-1 ${isUser ? 'text-purple-300' : 'text-white group-hover/link:text-purple-400'}`}>
+                                                            {team.name}
+                                                        </span>
+                                                        <span className="text-[10px] sm:text-base shrink-0 opacity-40 group-hover/link:opacity-100 transition-opacity" title={PERSONALITIES[team.archetype]?.title}>
+                                                            {PERSONALITIES[team.archetype]?.icon}
+                                                        </span>
+                                                    </div>
                                                     <div className="flex items-center gap-1 sm:gap-2">
-                                                        <span className="text-[8px] sm:text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded truncate">
+                                                        <span className="text-[7px] sm:text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-white/5 px-1 py-0.5 rounded truncate max-w-[60px] sm:max-w-none">
                                                             {team.ownerName}
+                                                        </span>
+                                                        <span className={`text-[6px] sm:text-[8px] font-black uppercase px-1 rounded border border-white/5 opacity-40 group-hover/link:opacity-100 transition-all ${PERSONALITIES[team.archetype]?.color || 'text-zinc-500'}`}>
+                                                            {PERSONALITIES[team.archetype]?.title}
                                                         </span>
                                                         {isUser && (
                                                             <span className="text-[7px] sm:text-[8px] font-black text-purple-400 uppercase tracking-widest sm:tracking-[0.2em] animate-pulse whitespace-nowrap">
@@ -179,36 +188,32 @@ export default function StandingsTable({ leagueId, teams }: StandingsTableProps)
                                             </Link>
                                         </td>
 
-                                        {/* Campaign Record */}
-                                        <td className="px-3 sm:px-6 py-4 sm:py-8 text-center">
+                                        {/* Record */}
+                                        <td className="px-2 sm:px-6 py-4 sm:py-8 text-center">
                                             <div className="inline-flex flex-col items-center gap-1">
-                                                <div className="flex items-center gap-1 sm:gap-2 font-mono text-base sm:text-xl font-black">
+                                                <div className="flex items-center gap-0.5 sm:gap-2 font-mono text-sm sm:text-xl font-black">
                                                     <span className="text-emerald-500">{team.wins}</span>
                                                     <span className="text-zinc-700">/</span>
                                                     <span className="text-red-500">{team.losses}</span>
                                                 </div>
-                                                <div className="text-[7px] sm:text-[8px] font-black text-zinc-600 uppercase tracking-widest whitespace-nowrap">
-                                                    Record
+                                                <div className="text-[7px] sm:text-[8px] font-black text-zinc-600 uppercase tracking-widest whitespace-nowrap hidden sm:block">
+                                                    Campaign
                                                 </div>
                                             </div>
                                         </td>
 
                                         {/* Prowess */}
-                                        <td className="px-3 sm:px-6 py-4 sm:py-8 text-right">
-                                            <div className="flex flex-col items-end gap-1 sm:gap-2">
+                                        <td className="px-2 sm:px-6 py-4 sm:py-8 text-right">
+                                            <div className="flex flex-col items-end gap-0.5 sm:gap-2">
                                                 <div className="flex items-baseline gap-1 sm:gap-2">
-                                                    <span className="text-[10px] sm:text-xs font-black text-emerald-400/60 font-mono italic">ATK</span>
-                                                    <span className="text-base sm:text-lg font-black text-white italic tracking-tighter">{team.pf.toFixed(1)}</span>
+                                                    <span className="text-[8px] sm:text-xs font-black text-emerald-400/60 font-mono italic">ATK</span>
+                                                    <span className="text-sm sm:text-lg font-black text-white italic tracking-tighter">{team.pf.toFixed(1)}</span>
                                                 </div>
                                                 <div className="h-1 w-20 sm:h-1.5 sm:w-32 bg-zinc-900 rounded-full overflow-hidden p-0.5 border border-white/5 hidden sm:block">
                                                     <div
                                                         className={`h-full rounded-full transition-all duration-1000 ${rank <= 3 ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 'bg-gradient-to-r from-purple-600 to-blue-500'}`}
                                                         style={{ width: `${Math.min((team.pf / 1500) * 100, 100)}%` }}
                                                     />
-                                                </div>
-                                                <div className="flex items-baseline gap-1 sm:gap-2">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-red-400/40 font-mono">DEF</span>
-                                                    <span className="text-xs sm:text-sm font-bold text-zinc-500 font-mono tracking-tighter">{team.pa.toFixed(1)}</span>
                                                 </div>
                                             </div>
                                         </td>

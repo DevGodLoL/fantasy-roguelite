@@ -23,6 +23,7 @@ function traitColorClass(rarity: string) {
         case 'legendary': return 'from-amber-500/10 via-amber-900/5 to-transparent border-amber-500/30 text-amber-200 shadow-[0_0_20px_rgba(251,191,36,0.05)]';
         case 'epic': return 'from-purple-500/10 via-purple-900/5 to-transparent border-purple-500/30 text-purple-200 shadow-[0_0_15px_rgba(147,51,234,0.05)]';
         case 'rare': return 'from-blue-500/10 via-blue-900/5 to-transparent border-blue-500/30 text-blue-200 shadow-[0_0_10px_rgba(59,130,246,0.05)]';
+        case 'curse': return 'from-red-900/20 via-red-950/10 to-transparent border-red-500/40 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.1)] animate-pulse';
         default: return 'from-white/[0.02] to-transparent border-white/10 text-zinc-400';
     }
 }
@@ -32,6 +33,7 @@ function traitIcon(rarity: string) {
         case 'legendary': return '👑';
         case 'epic': return '💎';
         case 'rare': return '✨';
+        case 'curse': return '💀';
         default: return '📜';
     }
 }

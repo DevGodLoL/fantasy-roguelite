@@ -195,62 +195,62 @@ export default async function TeamPage({
                                     Return to Command
                                 </Link>
 
-                                <div className="flex items-center gap-4">
-                                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-4xl font-black shadow-[0_0_30px_rgba(147,51,234,0.3)]">
+                                <div className="flex items-center gap-4 sm:gap-6">
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-3xl sm:text-4xl font-black shadow-[0_0_30px_rgba(147,51,234,0.3)] shrink-0">
                                         {team.name.charAt(0)}
                                     </div>
-                                    <div>
-                                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight uppercase">
+                                    <div className="min-w-0">
+                                        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase truncate">
                                             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
                                                 {team.name}
                                             </span>
                                         </h1>
-                                        <p className="text-zinc-500 text-sm mt-1">
-                                            Commander: <span className="text-purple-400 font-bold">{team.owner.displayName || team.owner.email}</span>
+                                        <p className="text-zinc-500 text-[10px] sm:text-sm mt-1 uppercase font-black tracking-widest">
+                                            Commander: <span className="text-purple-400">{team.owner.displayName || team.owner.email.split('@')[0]}</span>
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Stats Row */}
-                            <div className="flex flex-wrap gap-4">
+                            {/* Stats Row - Responsive Grid */}
+                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 w-full lg:w-auto mt-4 sm:mt-0">
                                 {/* Record */}
-                                <div className="px-6 py-4 bg-gradient-to-br from-zinc-800/50 to-zinc-900/80 border border-zinc-700/50 rounded-2xl text-center min-w-[100px]">
-                                    <div className="text-2xl font-black text-white">
+                                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-br from-zinc-800/50 to-zinc-900/80 border border-zinc-700/50 rounded-2xl text-center flex-1 sm:min-w-[100px]">
+                                    <div className="text-xl sm:text-2xl font-black text-white leading-tight">
                                         {wins}-{losses}{ties > 0 ? `-${ties}` : ''}
                                     </div>
-                                    <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Record</div>
+                                    <div className="text-[9px] sm:text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">Record</div>
                                 </div>
 
                                 {/* Streak */}
-                                <div className={`px-6 py-4 border rounded-2xl text-center min-w-[100px] ${streakType === 'W'
+                                <div className={`px-4 py-3 sm:px-6 sm:py-4 border rounded-2xl text-center flex-1 sm:min-w-[100px] ${streakType === 'W'
                                     ? 'bg-gradient-to-br from-emerald-900/30 to-emerald-950/50 border-emerald-500/30'
                                     : streakType === 'L'
                                         ? 'bg-gradient-to-br from-red-900/30 to-red-950/50 border-red-500/30'
                                         : 'bg-gradient-to-br from-zinc-800/50 to-zinc-900/80 border-zinc-700/50'
                                     }`}>
                                     <div className="flex items-center justify-center gap-1">
-                                        <span className="text-xl">
+                                        <span className="text-base sm:text-xl">
                                             {streakType === 'W' ? '🔥' : streakType === 'L' ? '💀' : '—'}
                                         </span>
-                                        <span className={`text-2xl font-black ${streakType === 'W' ? 'text-emerald-400' : streakType === 'L' ? 'text-red-400' : 'text-zinc-500'
+                                        <span className={`text-xl sm:text-2xl font-black ${streakType === 'W' ? 'text-emerald-400' : streakType === 'L' ? 'text-red-400' : 'text-zinc-500'
                                             }`}>
                                             {currentStreak > 0 ? `${streakType}${currentStreak}` : '—'}
                                         </span>
                                     </div>
-                                    <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Streak</div>
+                                    <div className="text-[9px] sm:text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">Streak</div>
                                 </div>
 
                                 {/* Army Size */}
-                                <div className="px-6 py-4 bg-gradient-to-br from-blue-900/20 to-blue-950/40 border border-blue-500/20 rounded-2xl text-center min-w-[100px]">
-                                    <div className="text-2xl font-black text-blue-400">{starterCount + benchCount}</div>
-                                    <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Warriors</div>
+                                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-br from-blue-900/20 to-blue-950/40 border border-blue-500/20 rounded-2xl text-center flex-1 sm:min-w-[100px]">
+                                    <div className="text-xl sm:text-2xl font-black text-blue-400 leading-tight">{starterCount + benchCount}</div>
+                                    <div className="text-[9px] sm:text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">Warriors</div>
                                 </div>
 
                                 {/* Artifacts */}
-                                <div className="px-6 py-4 bg-gradient-to-br from-amber-900/20 to-amber-950/40 border border-amber-500/20 rounded-2xl text-center min-w-[100px]">
-                                    <div className="text-2xl font-black text-amber-400">{totalPowerups}</div>
-                                    <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Artifacts</div>
+                                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-br from-amber-900/20 to-amber-950/40 border border-amber-500/20 rounded-2xl text-center flex-1 sm:min-w-[100px]">
+                                    <div className="text-xl sm:text-2xl font-black text-amber-400 leading-tight">{totalPowerups}</div>
+                                    <div className="text-[9px] sm:text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">Artifacts</div>
                                 </div>
                             </div>
                         </div>

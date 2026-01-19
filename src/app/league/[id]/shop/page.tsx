@@ -63,34 +63,36 @@ export default async function ShopPage({
             {/* HEADER */}
             {/* ═══════════════════════════════════════════════════════════════ */}
             <header className="relative z-30 border-b border-white/10 bg-black/60 backdrop-blur-xl sticky top-0">
-                <div className="max-w-6xl mx-auto px-6 h-24 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        <Link href={`/league/${id}`} className="text-zinc-500 hover:text-white transition-colors">
-                            ← BACK
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:h-24 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 sm:gap-6">
+                        <Link href={`/league/${id}`} className="p-2 sm:p-0 text-zinc-500 hover:text-white transition-colors">
+                            ← <span className="hidden sm:inline">BACK</span>
                         </Link>
                         <div>
-                            <div className="text-[10px] text-amber-500 font-bold uppercase tracking-[0.3em] mb-1">Black Market</div>
-                            <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
+                            <div className="text-[8px] sm:text-[10px] text-amber-500 font-bold uppercase tracking-[0.3em] mb-0.5 sm:mb-1">Black Market</div>
+                            <h1 className="text-xl sm:text-3xl font-black italic uppercase tracking-tighter text-white">
                                 The Relic <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600">Emporium</span>
                             </h1>
                         </div>
                     </div>
 
                     {/* PLAYER WEALTH */}
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-4 px-6 py-3 bg-white/5 rounded-full border border-white/10">
+                    <div className="flex items-center gap-2 sm:gap-6 w-full sm:w-auto">
+                        <div className="flex-1 sm:flex-none flex items-center justify-between sm:justify-end gap-3 px-4 py-2 sm:px-6 sm:py-3 bg-white/5 rounded-xl sm:rounded-full border border-white/10">
+                            <div className="text-[8px] text-zinc-500 uppercase font-black tracking-widest sm:hidden">Gold</div>
                             <div className="text-right">
-                                <div className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Available Gold</div>
-                                <div className="text-xl font-black text-amber-400 leading-none flex items-center justify-end gap-2">
-                                    {userTeam.gold} <span>🪙</span>
+                                <div className="text-[9px] text-zinc-500 uppercase font-black tracking-widest hidden sm:block">Available Gold</div>
+                                <div className="text-sm sm:text-xl font-black text-amber-400 leading-none flex items-center justify-end gap-1.5 sm:gap-2">
+                                    {userTeam.gold}<span className="text-xs sm:text-lg">🪙</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-6 py-3 bg-white/5 rounded-full border border-white/10">
+                        <div className="flex-1 sm:flex-none flex items-center justify-between sm:justify-end gap-3 px-4 py-2 sm:px-6 sm:py-3 bg-white/5 rounded-xl sm:rounded-full border border-white/10">
+                            <div className="text-[8px] text-zinc-500 uppercase font-black tracking-widest sm:hidden">Rerolls</div>
                             <div className="text-right">
-                                <div className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Rerolls</div>
-                                <div className="text-xl font-black text-purple-400 leading-none flex items-center justify-end gap-2">
-                                    {userTeam.rerolls} <span>🎲</span>
+                                <div className="text-[9px] text-zinc-500 uppercase font-black tracking-widest hidden sm:block">Rerolls</div>
+                                <div className="text-sm sm:text-xl font-black text-purple-400 leading-none flex items-center justify-end gap-1.5 sm:gap-2">
+                                    {userTeam.rerolls}<span className="text-xs sm:text-lg">🎲</span>
                                 </div>
                             </div>
                         </div>

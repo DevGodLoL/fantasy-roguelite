@@ -14,42 +14,70 @@ import {
 
 // --- TRAIT DEFINITIONS ---
 const TRAIT_DEFINITIONS: Record<string, any> = {
+    // Basic Positive
     HOT_HAND: { code: 'HOT_HAND', name: "Hot Hand", description: "In the zone! +10% Points.", kind: "multiplier", value: 1.1, duration: 1, rarity: "uncommon" },
     GENIUS: { code: 'GENIUS', name: "Genius", description: "High IQ play. +15% Points.", kind: "multiplier", value: 1.15, duration: 2, rarity: "rare" },
     CLUTCH: { code: 'CLUTCH', name: "Clutch", description: "Performs under pressure. +5 pts.", kind: "bonus_flat", value: 5.0, duration: 3, rarity: "epic" },
     LEGENDARY_AURA: { code: 'LEGENDARY_AURA', name: "Legendary Aura", description: "Permanent +2 pts.", kind: "bonus_flat", value: 2.0, duration: null, rarity: "legendary" },
 
+    // Specializations
+    SHADOW_RUNNER: { code: 'SHADOW_RUNNER', name: "Shadow Runner", description: "Unstoppable on the ground. +20% Rushing Points.", kind: "multiplier", value: 1.2, duration: 2, rarity: "rare" },
+    GUNSLINGER: { code: 'GUNSLINGER', name: "Gunslinger", description: "Air raid specialist. +15% Passing Points.", kind: "multiplier", value: 1.15, duration: 2, rarity: "rare" },
+    IRON_LUNG: { code: 'IRON_LUNG', name: "Iron Lung", description: "Never tires. +5% points permanently.", kind: "multiplier", value: 1.05, duration: null, rarity: "epic" },
+
+    // Negative / Curses
     COLD: { code: 'COLD', name: "Cold Streak", description: "Sluggish. -10% Points.", kind: "multiplier", value: 0.9, duration: 1, rarity: "common" },
     SHOOK: { code: 'SHOOK', name: "Shook", description: "Confidence shattered. -20% Points.", kind: "multiplier", value: 0.8, duration: 2, rarity: "uncommon" },
     VULNERABLE: { code: 'VULNERABLE', name: "Vulnerable", description: "Prone to mistakes. -3 pts.", kind: "bonus_flat", value: -3.0, duration: 1, rarity: "common" },
+    BUTTERFINGERS: { code: 'BUTTERFINGERS', name: "Butterfingers", description: "Loves to drop the ball. -5 pts on fumbles.", kind: "bonus_flat", value: -5.0, duration: 3, rarity: "curse" },
+    CURSE_OF_THE_FALLEN: { code: 'CURSE_OF_THE_FALLEN', name: "Curse of the Fallen", description: "Slow decay. -10% points permanently.", kind: "multiplier", value: 0.9, duration: null, rarity: "curse" },
 };
 
 // Check for new mutations based on performance
-function checkMutations(playerId: string, points: number, leagueId: string, currentWeekNumber: number) {
+function checkMutations(
+    playerId: string,
+    points: number,
+    stats: any,
+    position: string,
+    leagueId: string,
+    currentWeekNumber: number
+) {
     const mutations = [];
 
-    // POSITIVE MUTATIONS
+    // 1. POSITIVE SCORE TRIGGERS
     if (points >= 25) {
-        // High Score Chance
         const roll = Math.random();
         if (roll < 0.1) mutations.push(TRAIT_DEFINITIONS.GENIUS);
-        else if (roll < 0.5) mutations.push(TRAIT_DEFINITIONS.HOT_HAND);
+        else if (roll < 0.4) mutations.push(TRAIT_DEFINITIONS.HOT_HAND);
     }
     if (points >= 35) {
-        // Elite Score Chance
         if (Math.random() < 0.05) mutations.push(TRAIT_DEFINITIONS.LEGENDARY_AURA);
-        else mutations.push(TRAIT_DEFINITIONS.CLUTCH);
+        else if (Math.random() < 0.2) mutations.push(TRAIT_DEFINITIONS.CLUTCH);
     }
 
-    // NEGATIVE MUTATIONS
+    // 2. STAT-SPECIFIC TRIGGERS
+    if (position === 'RB' && stats.rushYds >= 100) {
+        if (Math.random() < 0.3) mutations.push(TRAIT_DEFINITIONS.SHADOW_RUNNER);
+    }
+    if (position === 'QB' && stats.passYds >= 300) {
+        if (Math.random() < 0.3) mutations.push(TRAIT_DEFINITIONS.GUNSLINGER);
+    }
+    if (stats.fumbles > 0) {
+        if (Math.random() < 0.4) mutations.push(TRAIT_DEFINITIONS.BUTTERFINGERS);
+    }
+
+    // 3. NEGATIVE SCORE TRIGGERS
     if (points < 5 && points > -5) {
-        // Low Score Chance (but not DNP 0)
-        // Assume starters > 0 if they played.
         if (Math.random() < 0.25) mutations.push(TRAIT_DEFINITIONS.COLD);
     }
     if (points < 0) {
-        // Negative points = Bad
         mutations.push(TRAIT_DEFINITIONS.SHOOK);
+        if (Math.random() < 0.1) mutations.push(TRAIT_DEFINITIONS.CURSE_OF_THE_FALLEN);
+    }
+
+    // Permanent high performance bonus
+    if (points >= 40 && Math.random() < 0.1) {
+        mutations.push(TRAIT_DEFINITIONS.IRON_LUNG);
     }
 
     // Helper to format for DB
@@ -446,11 +474,23 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
             let fumbles = 0;
             const positionScores: Record<string, number> = {};
             let highestPlayerScore = 0;
+            const archetype = team.archetype; // Already on team object from DB
 
             for (const slot of team.rosterSlots) {
                 if (slot.player) {
                     const { points: rawPoints, stats } = generateStats(slot.player.position);
                     let finalPoints = rawPoints;
+
+                    // AI ARCHETYPE INFLUENCE (Player Level)
+                    if (archetype === 'CONSERVATIVE' && stats.fumbles > 0) {
+                        // Sentinel: Reduces damage from fumbles (only -1 instead of -2)
+                        finalPoints += 1;
+                    }
+                    if (archetype === 'AGGRESSIVE') {
+                        // Warlord: Higher ceiling (+5%), but fumbles are disastrous (-2 extra)
+                        finalPoints *= 1.05;
+                        if (stats.fumbles > 0) finalPoints -= 2;
+                    }
 
                     // Apply ACTIVE TRAITS
                     if (slot.player.traits && slot.player.traits.length > 0) {
@@ -509,7 +549,14 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                     );
 
                     // Check for NEW MUTATIONS
-                    const newMutations = checkMutations(slot.player.id, finalPoints, leagueId, weekNumber);
+                    const newMutations = checkMutations(
+                        slot.player.id,
+                        finalPoints,
+                        stats,
+                        slot.player.position,
+                        leagueId,
+                        weekNumber
+                    );
                     for (const m of newMutations) {
                         transactions.push(
                             db.playerTrait.create({ data: m })
@@ -543,12 +590,32 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
             let homeFumbles = home.fumbles;
             let awayFumbles = away.fumbles;
 
-            // --- POWERUP LOGIC (Team Level) ---
+            // --- AI STRATEGIC MODIFIERS ---
+            const homeArchetype = matchup.homeTeam.archetype;
+            const awayArchetype = matchup.awayTeam.archetype;
+
             let homeMultiplier = 1.0;
             let homeBonus = 0;
             let awayMultiplier = 1.0;
             let awayBonus = 0;
 
+            // MASTERMIND: Calculated precision (+3 pts flat)
+            if (homeArchetype === 'MASTERMIND') homeBonus += 3;
+            if (awayArchetype === 'MASTERMIND') awayBonus += 3;
+
+            // CHAOTIC: Random entropy (+/- 10%)
+            if (homeArchetype === 'CHAOTIC') homeMultiplier *= (0.9 + Math.random() * 0.2);
+            if (awayArchetype === 'CHAOTIC') awayMultiplier *= (0.9 + Math.random() * 0.2);
+
+            // HOARDER: Passive Relic Focus (+1 pt per artifact)
+            if (homeArchetype === 'HOARDER') homeBonus += matchup.homeTeam.powerups.length;
+            if (awayArchetype === 'HOARDER') awayBonus += matchup.awayTeam.powerups.length;
+
+            // GREEDY: Sacrifice power for wealth (-5 pts)
+            if (homeArchetype === 'GREEDY') homeBonus -= 5;
+            if (awayArchetype === 'GREEDY') awayBonus -= 5;
+
+            // --- POWERUP LOGIC (Team Level) ---
             // Apply Home Powerups
             for (const tp of matchup.homeTeam.powerups) {
                 const p = tp.powerup;
@@ -608,6 +675,10 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                 homeGold = 75;
                 awayGold = 75;
             }
+
+            // GREEDY: Extra wealth (+25g)
+            if (homeArchetype === 'GREEDY') homeGold += 25;
+            if (awayArchetype === 'GREEDY') awayGold += 25;
 
             // Update Matchup
             await db.matchup.update({

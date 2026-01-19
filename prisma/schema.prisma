@@ -119,6 +119,7 @@ model Team {
   faabBalance    Int                @default(100)
   gold           Int                @default(100)
   rerolls        Int                @default(1) // Reroll tokens for pack opening
+  archetype      String             @default("BALANCED") // AGGRESSIVE | CONSERVATIVE | MASTERMIND | GREEDY | HOARDER | CHAOTIC
   waiverClaims   WaiverClaim[]
   transactions   LeagueTransaction[]
   missions       TeamMission[]

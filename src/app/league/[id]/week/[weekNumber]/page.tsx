@@ -358,8 +358,9 @@ export default async function WeekPage({
                                     "use server";
                                     await simulateWeek(leagueId, weekNum);
                                 }}
+                                className="w-full sm:w-auto"
                             >
-                                <button className="px-5 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black text-xs uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                                <button className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black text-[10px] uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] tracking-widest">
                                     ⚡ Resolve Battle
                                 </button>
                             </form>
@@ -368,7 +369,7 @@ export default async function WeekPage({
                         {isFinal && weekNum < allWeeks.length && (
                             <Link
                                 href={`/league/${leagueId}/week/${weekNum + 1}`}
-                                className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                className="w-full sm:w-auto text-center px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-[10px] uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] tracking-widest"
                             >
                                 Next Floor →
                             </Link>
@@ -641,6 +642,6 @@ export default async function WeekPage({
                     </div>
                 </div>
             </main>
-        </div>
+        </div >
     );
 }
