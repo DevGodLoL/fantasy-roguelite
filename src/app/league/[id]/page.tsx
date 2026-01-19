@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import StandingsTable from "./StandingsTable";
 import LeagueActivity from "./LeagueActivity";
 import RitualResolutionModal from "@/components/RitualResolutionModal";
-import DungeonMap from "@/components/DungeonMap";
+import DungeonProgress from "@/components/DungeonProgress";
 
 // Week flavor names for roguelite theme
 const WEEK_NAMES = [
@@ -214,7 +214,7 @@ export default async function LeaguePage({
                   <span className="text-4xl animate-pulse drop-shadow-[0_0_15px_rgba(147,51,234,0.5)]">⚔️</span>
                   <div className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">
-                      Season 1 • Chapter {currentWeek?.number || 1}
+                      Season 1 • Floor {currentWeek?.number || 1}
                     </span>
                   </div>
                 </div>
@@ -297,6 +297,12 @@ export default async function LeaguePage({
                     ✨ Artifacts
                   </Link>
                   <Link
+                    href={`/league/${id}/quests`}
+                    className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(251,146,60,0.3)]"
+                  >
+                    📜 Quests
+                  </Link>
+                  <Link
                     href={`/league/${id}/waivers`}
                     className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs rounded-xl transition-all"
                   >
@@ -307,6 +313,12 @@ export default async function LeaguePage({
                     className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase text-xs rounded-xl transition-all"
                   >
                     📜 Battle Schedule
+                  </Link>
+                  <Link
+                    href={`/league/${id}/campaign`}
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                  >
+                    🗺️ Campaign Map
                   </Link>
                   <Link
                     href={`/league/${id}/playoffs`}
@@ -459,36 +471,17 @@ export default async function LeaguePage({
               <LeagueActivity leagueId={id} />
             </div>
 
-            {/* The Dungeon Map (Weekly Schedule) */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="text-xl">🗺️</div>
-                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-blue-400">
-                  The Dungeon Map
-                </h2>
-                <div className="h-px flex-1 bg-gradient-to-r from-blue-500/50 to-transparent" />
-              </div>
-
-              <DungeonMap
-                leagueId={id}
-                weeks={league.weeks.map(w => {
-                  const weekMatchups = league.matchups.filter(m => m.weekId === w.id);
-                  const isCurrentWeek = w.id === currentWeek?.id;
-                  const isCompleted = weekMatchups.length > 0 && weekMatchups.every(m => m.status === 'final');
-                  // Locked if future week (week number > current active week number)
-                  const isLocked = !isCompleted && !isCurrentWeek && w.number > (currentWeek?.number || 0);
-
-                  return {
-                    id: w.id,
-                    number: w.number,
-                    name: WEEK_NAMES[(w.number - 1) % WEEK_NAMES.length] || `Floor ${w.number}`,
-                    isCurrent: isCurrentWeek,
-                    isCompleted,
-                    isLocked
-                  };
-                })}
-              />
-            </div>
+            {/* Campaign Progress Widget */}
+            <DungeonProgress
+              leagueId={id}
+              currentFloor={currentWeek?.number || 1}
+              floorName={WEEK_NAMES[((currentWeek?.number || 1) - 1) % WEEK_NAMES.length]}
+              totalFloors={league.weeks.length}
+              completedFloors={league.weeks.filter(w => {
+                const weekMatchups = league.matchups.filter(m => m.weekId === w.id);
+                return weekMatchups.length > 0 && weekMatchups.every(m => m.status === 'final');
+              }).length}
+            />
           </section>
         </div>
       </div>

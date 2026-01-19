@@ -66,7 +66,7 @@ body {
   }
 
   50% {
-    transform: translateY(-20px);
+    transform: translateY(-10px);
   }
 }
 
@@ -194,8 +194,8 @@ body {
   }
 
   100% {
-    transform: translateY(-50px) scale(1.2);
-    filter: brightness(1.5);
+    transform: translateY(-20px) scale(1.1);
+    filter: brightness(1.3);
   }
 }
 

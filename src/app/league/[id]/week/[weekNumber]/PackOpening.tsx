@@ -86,7 +86,7 @@ export default function PackOpening({
     if (viewState === 'chest' || viewState === 'charging') {
         const isCharging = viewState === 'charging';
         return (
-            <div className="relative min-h-[280px] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md border border-purple-500/20 rounded-2xl overflow-hidden group perspective-[1200px]">
+            <div className="relative min-h-[320px] flex items-center justify-center p-8 pt-14 bg-black/60 backdrop-blur-md border border-purple-500/20 rounded-2xl overflow-hidden group perspective-[1200px]">
                 {/* Ambient Background Pulse */}
                 <div className={`absolute inset-0 bg-gradient-to-t from-amber-900/10 via-transparent to-transparent ${isCharging ? 'animate-pulse opacity-50' : 'animate-pulse'}`} />
 
@@ -131,7 +131,7 @@ export default function PackOpening({
 
                             {/* Interact Hint */}
                             {!isCharging && (
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 animate-bounce">
+                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 animate-bounce">
                                     <span className="text-lg filter drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">✨</span>
                                 </div>
                             )}

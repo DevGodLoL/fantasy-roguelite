@@ -1,9 +1,11 @@
-import { db } from "@/lib/prisma"; // Adjust import to your actual db location
-import { SHOP_RELICS } from "@/lib/game-data/shop-items";
+import { db } from "@/lib/prisma";
+import { SHOP_RELICS, SHOP_CONSUMABLES } from "@/lib/game-data/shop-items";
 
-async function seedShopRelics() {
-    console.log("🏪 Seeding Shop Relics...");
+async function seedShopItems() {
+    console.log("🏪 Seeding Shop Items...");
 
+    // 1. Seed Relics
+    console.log("  - Seeding Relics...");
     for (const relic of SHOP_RELICS) {
         await db.powerup.upsert({
             where: { code: relic.id },
@@ -27,10 +29,41 @@ async function seedShopRelics() {
         });
     }
 
-    console.log("✅ Shop Relics seeded!");
+    // 2. Seed Consumables
+    console.log("  - Seeding Consumables...");
+    for (const item of SHOP_CONSUMABLES) {
+        await db.powerup.upsert({
+            where: { code: item.id },
+            update: {
+                price: item.cost,
+                type: "card", // We treat these as buyable cards
+                rarity: item.rarity,
+                description: item.description,
+                name: item.name,
+                kind: item.kind,
+                value: item.value,
+                duration: item.duration,
+                scope: item.scope || "self" // Default to self if not specified
+            },
+            create: {
+                code: item.id,
+                name: item.name,
+                description: item.description,
+                rarity: item.rarity,
+                scope: item.scope || "self",
+                duration: item.duration,
+                type: "card",
+                price: item.cost,
+                kind: item.kind,
+                value: item.value
+            }
+        });
+    }
+
+    console.log("✅ Shop Items seeded successfully!");
 }
 
-seedShopRelics()
+seedShopItems()
     .catch((e) => {
         console.error(e);
         process.exit(1);

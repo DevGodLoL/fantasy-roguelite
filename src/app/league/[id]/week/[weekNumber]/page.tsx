@@ -307,17 +307,17 @@ export default async function WeekPage({
                 <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full">
                     <div className="flex items-center gap-4">
                         <Link
-                            href={`/league/${leagueId}/schedule`}
+                            href={`/league/${leagueId}`}
                             className="text-zinc-500 hover:text-purple-400 transition-colors text-sm font-medium flex items-center gap-2 group"
                         >
                             <span className="group-hover:-translate-x-1 transition-transform">←</span>
-                            Campaign Map
+                            Command
                         </Link>
                         <div className="h-6 w-px bg-white/10" />
                         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                             <span className="text-xl hidden sm:inline">⚔️</span>
                             <h1 className="font-black uppercase tracking-tighter text-lg sm:text-xl bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                                Chapter {weekNum}{userMatchup?.round && <span className="text-zinc-500"> • {userMatchup.round.replace('_', ' ').toUpperCase()}</span>}
+                                Floor {weekNum}{userMatchup?.round && <span className="text-zinc-500"> • {userMatchup.round.replace('_', ' ').toUpperCase()}</span>}
                             </h1>
                             <span
                                 className={`text-[9px] font-black px-2 py-0.5 sm:px-3 sm:py-1 rounded-full uppercase tracking-widest border w-fit ${isFinal
@@ -370,7 +370,7 @@ export default async function WeekPage({
                                 href={`/league/${leagueId}/week/${weekNum + 1}`}
                                 className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs uppercase rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                             >
-                                Next Chapter →
+                                Next Floor →
                             </Link>
                         )}
                     </div>

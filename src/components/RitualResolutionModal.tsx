@@ -92,7 +92,7 @@ export default function RitualResolutionModal({ leagueId, weekNumber }: { league
                             {/* Hero Section */}
                             <div className="text-center space-y-4">
                                 <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter uppercase">
-                                    <span className="bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent">Chapter {data.weekNumber} </span>
+                                    <span className="bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent">Floor {data.weekNumber} </span>
                                     <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">Results</span>
                                 </h2>
                                 <p className="text-lg text-zinc-500 font-bold uppercase tracking-[0.5em] italic">"{data.weekName}"</p>

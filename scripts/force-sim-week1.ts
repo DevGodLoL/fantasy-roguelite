@@ -1,5 +1,6 @@
 
 import { db } from '../src/lib/prisma';
+import { simulateTeamPerformance } from '../src/lib/game-logic/simulation';
 
 // --- TRAIT DEFINITIONS ---
 const TRAIT_DEFINITIONS: Record<string, any> = {
@@ -262,39 +263,47 @@ async function simulateWeek(leagueId: string, weekNumber: number) {
         for (const matchup of week.matchups) {
             console.log(`Processing matchup ${matchup.id}`);
 
-            const home = processTeam(matchup.homeTeam);
-            const away = processTeam(matchup.awayTeam);
+            // 1. Simulate Performances
+            const homeResult = await simulateTeamPerformance(matchup.homeTeam, matchup.awayTeam);
+            const awayResult = await simulateTeamPerformance(matchup.awayTeam, matchup.homeTeam);
 
-            let homeTotal = home.total;
-            let awayTotal = away.total;
-            let homeFumbles = home.fumbles;
-            let awayFumbles = away.fumbles;
+            const homeTotal = homeResult.score;
+            const awayTotal = awayResult.score;
 
-            // Apply Powerups
-            // (Simplified: Ignoring code specific checks to save space, assuming generic logic works as copied)
-            // Actually, copying existing logic:
-            let homeMultiplier = 1.0; let homeBonus = 0; let awayMultiplier = 1.0; let awayBonus = 0;
-
-            for (const tp of matchup.homeTeam.powerups) {
-                const p = tp.powerup;
-                if (p.scope === "self") {
-                    if (p.kind === "multiplier" && p.value) homeMultiplier *= p.value;
-                    if (p.kind === "bonus_points" && p.value) homeBonus += p.value;
+            // 2. Consume Consumables
+            const consumePowerups = async (team: any) => {
+                for (const tp of team.powerups) {
+                    if (tp.powerup.type === 'card' && !tp.isConsumed) {
+                        await db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } });
+                    }
                 }
-                transactions.push(db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } }));
-            }
-            // Skipping detailed powerup mirror logic for brevity in this script, focusing on generating results
+            };
+            await consumePowerups(matchup.homeTeam);
+            await consumePowerups(matchup.awayTeam);
 
-            homeTotal = (homeTotal * homeMultiplier) + homeBonus;
-            awayTotal = (awayTotal * awayMultiplier) + awayBonus;
-
-            // Winner & Gold
+            // 3. Determine Winner & Base Gold
             let homeGold = 0; let awayGold = 0;
             const WIN_GOLD = 100; const LOSS_BASE_GOLD = 75;
 
             if (homeTotal > awayTotal) { homeGold = WIN_GOLD; awayGold = LOSS_BASE_GOLD; }
             else if (awayTotal > homeTotal) { awayGold = WIN_GOLD; homeGold = LOSS_BASE_GOLD; }
             else { homeGold = 75; awayGold = 75; }
+
+            // 4. Apply Gold Multipliers (e.g. Relics)
+            // Need to calculate multipliers - simulateTeamPerformance helper could return this, 
+            // but we need to re-check relics or update `sim` result to return goldMultiplier.
+            // Updated simulation.ts to logic returns modifiers? 
+            // Let's just re-check active relics simply here for Gold.
+            const getGoldMult = (team: any) => {
+                let m = 1.0;
+                for (const tp of team.powerups) {
+                    if (tp.powerup.code === 'relic_golden_gauntlet' && !tp.isConsumed) m *= 1.25; // 25% bonus
+                }
+                return m;
+            };
+
+            homeGold = Math.floor(homeGold * getGoldMult(matchup.homeTeam));
+            awayGold = Math.floor(awayGold * getGoldMult(matchup.awayTeam));
 
             // Update Matchup
             await db.matchup.update({

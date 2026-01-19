@@ -28,22 +28,14 @@ export async function POST(
         return NextResponse.json({ error: "Not enough gold" }, { status: 400 });
     }
 
-    // Atomic Update
-    await db.$transaction([
-        // Deduct Gold
+    // Atomic Update building pieces
+    const transactionOps: any[] = [
+        // 1. Deduct Gold
         db.team.update({
             where: { id: teamId },
             data: { gold: { decrement: item.price } }
         }),
-        // Add Relic to Team
-        db.teamPowerup.create({
-            data: {
-                teamId: team.id,
-                powerupId: item.id,
-                isConsumed: false // Relics are permanent
-            }
-        }),
-        // Log Transaction
+        // 3. Log Transaction
         db.leagueTransaction.create({
             data: {
                 leagueId,
@@ -53,7 +45,32 @@ export async function POST(
                 amount: -item.price
             }
         })
-    ]);
+    ];
+
+    // 2. Handle Item Effect (Instant vs Inventory)
+    if (item.kind === 'reroll_add') {
+        // Instant: Add Reroll
+        transactionOps.push(
+            db.team.update({
+                where: { id: teamId },
+                data: { rerolls: { increment: item.value || 1 } }
+            })
+        );
+    } else {
+        // Inventory: Add Powerup
+        transactionOps.push(
+            db.teamPowerup.create({
+                data: {
+                    teamId: team.id,
+                    powerupId: item.id,
+                    isConsumed: false,
+                    source: "shop"
+                }
+            })
+        );
+    }
+
+    await db.$transaction(transactionOps);
 
     return NextResponse.json({ success: true });
 }

@@ -26,8 +26,15 @@ export default async function ShopPage({
     // Fetch ONLY Relics (we added type='relic')
     // Since we just ran a migration, make sure we filter correctly.
     // We added 'type' field.
+    // Fetch Relics (Persistent)
     const relics = await db.powerup.findMany({
         where: { type: "relic" },
+        orderBy: { price: "asc" }
+    });
+
+    // Fetch Consumables (Cards)
+    const consumables = await db.powerup.findMany({
+        where: { type: "card" },
         orderBy: { price: "asc" }
     });
 
@@ -70,11 +77,21 @@ export default async function ShopPage({
                     </div>
 
                     {/* PLAYER WEALTH */}
-                    <div className="flex items-center gap-4 px-6 py-3 bg-white/5 rounded-full border border-white/10">
-                        <div className="text-right">
-                            <div className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Your Treasury</div>
-                            <div className="text-xl font-black text-amber-400 leading-none flex items-center justify-end gap-2">
-                                {userTeam.gold} <span>🪙</span>
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 px-6 py-3 bg-white/5 rounded-full border border-white/10">
+                            <div className="text-right">
+                                <div className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Available Gold</div>
+                                <div className="text-xl font-black text-amber-400 leading-none flex items-center justify-end gap-2">
+                                    {userTeam.gold} <span>🪙</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 px-6 py-3 bg-white/5 rounded-full border border-white/10">
+                            <div className="text-right">
+                                <div className="text-[9px] text-zinc-500 uppercase font-black tracking-widest">Rerolls</div>
+                                <div className="text-xl font-black text-purple-400 leading-none flex items-center justify-end gap-2">
+                                    {userTeam.rerolls} <span>🎲</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -98,6 +115,38 @@ export default async function ShopPage({
                         />
                     ))}
                 </div>
+
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                {/* CONSUMABLES SECTION */}
+                {/* ═══════════════════════════════════════════════════════════════ */}
+                {consumables.length > 0 && (
+                    <div className="mt-16">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="text-2xl">📜</div>
+                            <h2 className="text-xl font-bold uppercase tracking-widest text-zinc-400">
+                                Scrolls & Contracts
+                            </h2>
+                            <div className="h-px flex-1 bg-gradient-to-r from-zinc-800 to-transparent" />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {consumables.map(item => (
+                                <RelicCard
+                                    key={item.id}
+                                    relic={{
+                                        ...item,
+                                        icon: item.kind === 'reroll_add' ? "📜" : "🧪" // Simple icon logic
+                                    }}
+                                    userParams={{
+                                        gold: userTeam.gold,
+                                        teamId: userTeam.id,
+                                        leagueId: id
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {relics.length === 0 && (
                     <div className="text-center py-20 text-zinc-600">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { generateSchedule } from "./actions";
 
 // Week flavor names for roguelite theme
-const CHAPTER_NAMES = [
+const FLOOR_NAMES = [
     "The Awakening",
     "Trial of Flames",
     "Shadow's Descent",
@@ -200,7 +200,7 @@ export default async function SchedulePage({
                                                 <div className="text-5xl font-black bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
                                                     {completedWeeks} <span className="text-2xl text-zinc-600">/ {totalWeeks}</span>
                                                 </div>
-                                                <div className="text-sm text-zinc-500 mt-1">Chapters Conquered</div>
+                                                <div className="text-sm text-zinc-500 mt-1">Floors Conquered</div>
                                             </div>
                                             <div className="flex-1">
                                                 <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
@@ -257,7 +257,7 @@ export default async function SchedulePage({
                                                         ${isCurrent ? 'text-white' : isComplete ? 'text-white/80' : 'text-zinc-500'}
                                                         hover:scale-105
                                                     `}
-                                                    title={`Week ${week.number}: ${CHAPTER_NAMES[idx] || `Chapter ${week.number}`}`}
+                                                    title={`Week ${week.number}: ${FLOOR_NAMES[idx] || `Floor ${week.number}`}`}
                                                 >
                                                     {isCurrent ? '⚔️' : isComplete ? (userWon ? '✓' : '•') : week.number}
                                                 </Link>
@@ -287,10 +287,10 @@ export default async function SchedulePage({
                                             </div>
                                             <div>
                                                 <div className="text-[10px] uppercase tracking-widest text-purple-400 font-bold">
-                                                    Current Chapter
+                                                    Current Floor
                                                 </div>
                                                 <h2 className="text-2xl font-black text-white">
-                                                    Week {currentWeek.number}: {CHAPTER_NAMES[(currentWeek.number - 1) % CHAPTER_NAMES.length]}
+                                                    Week {currentWeek.number}: {FLOOR_NAMES[(currentWeek.number - 1) % FLOOR_NAMES.length]}
                                                 </h2>
                                             </div>
                                         </div>
@@ -421,7 +421,7 @@ export default async function SchedulePage({
                                                             {isBossWeek ? 'Final Boss' : `Week ${week.number}`}
                                                         </h3>
                                                         <p className={`text-[10px] italic ${isBossWeek ? 'text-amber-500/60' : 'text-zinc-600'}`}>
-                                                            {CHAPTER_NAMES[idx] || `Chapter ${week.number}`}
+                                                            {FLOOR_NAMES[idx] || `Floor ${week.number}`}
                                                         </p>
                                                     </div>
                                                 </div>

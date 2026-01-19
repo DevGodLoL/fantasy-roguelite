@@ -41,7 +41,9 @@ export async function addPlayerToRoster(
         });
     }
 
-    revalidatePath(`/league/${leagueId}/team/${teamId}`);
+    try {
+        revalidatePath(`/league/${leagueId}/team/${teamId}`);
+    } catch (e) { }
 }
 
 export async function dropPlayer(
@@ -72,7 +74,9 @@ export async function dropPlayer(
         data: { playerId: null },
     });
 
-    revalidatePath(`/league/${leagueId}/team/${teamId}`);
+    try {
+        revalidatePath(`/league/${leagueId}/team/${teamId}`);
+    } catch (e) { }
 }
 
 export async function swapRosterSlots(
@@ -107,5 +111,7 @@ export async function swapRosterSlots(
         db.rosterSlot.update({ where: { id: slot2Id }, data: { playerId: slot1.playerId } })
     ]);
 
-    revalidatePath(`/league/${leagueId}/team/${teamId}`);
+    try {
+        revalidatePath(`/league/${leagueId}/team/${teamId}`);
+    } catch (e) { }
 }

@@ -196,13 +196,14 @@ export default async function TeamPage({
                                 </Link>
 
                                 <div className="flex items-center gap-4">
-                                    {/* Team Avatar */}
                                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-4xl font-black shadow-[0_0_30px_rgba(147,51,234,0.3)]">
                                         {team.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <h1 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-white to-zinc-400 bg-clip-text text-transparent">
-                                            {team.name}
+                                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight uppercase">
+                                            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+                                                {team.name}
+                                            </span>
                                         </h1>
                                         <p className="text-zinc-500 text-sm mt-1">
                                             Commander: <span className="text-purple-400 font-bold">{team.owner.displayName || team.owner.email}</span>
@@ -331,11 +332,23 @@ export default async function TeamPage({
                                     })}
                                 </div>
                             ) : (
-                                <div className="p-8 border border-dashed border-zinc-800 rounded-2xl text-center">
-                                    <div className="text-4xl mb-3 opacity-40">📦</div>
-                                    <p className="text-zinc-600 italic text-sm">
-                                        No artifacts equipped. Visit the <Link href={`/league/${leagueId}/inventory`} className="text-amber-500 hover:underline">Artifact Armory</Link> to gain advantages.
-                                    </p>
+                                <div className="relative p-10 border border-dashed border-zinc-700/50 rounded-2xl text-center overflow-hidden group hover:border-amber-500/30 transition-all">
+                                    {/* Subtle background pattern */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-amber-900/5 via-transparent to-purple-900/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                    <div className="relative z-10">
+                                        <div className="text-5xl mb-4 opacity-30 group-hover:opacity-60 transition-opacity">✨</div>
+                                        <h3 className="text-lg font-bold text-zinc-400 mb-2">No Artifacts Equipped</h3>
+                                        <p className="text-zinc-600 text-sm max-w-xs mx-auto mb-4">
+                                            Artifacts grant powerful bonuses during battle. Collect them from weekly treasure chests!
+                                        </p>
+                                        <Link
+                                            href={`/league/${leagueId}/inventory`}
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600/20 to-amber-500/10 hover:from-amber-600/40 hover:to-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-widest rounded-xl border border-amber-500/30 hover:border-amber-500/50 transition-all"
+                                        >
+                                            <span>🗝️</span> Visit Armory
+                                        </Link>
+                                    </div>
                                 </div>
                             )}
                         </section>
@@ -351,14 +364,6 @@ export default async function TeamPage({
                                         Battle Formation
                                     </h2>
                                     <div className="h-px flex-1 bg-gradient-to-r from-purple-500/30 to-transparent" />
-                                    <div className="flex items-center gap-3 text-[10px] text-zinc-500 uppercase tracking-wide font-bold">
-                                        <span className="flex items-center gap-1">
-                                            <span className="w-2 h-2 rounded-full bg-purple-500" /> {starterCount} Starters
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <span className="w-2 h-2 rounded-full bg-zinc-600" /> {benchCount} Bench
-                                        </span>
-                                    </div>
                                 </div>
 
                                 <RosterManager

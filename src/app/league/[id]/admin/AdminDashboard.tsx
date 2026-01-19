@@ -54,7 +54,7 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
                             Current Temporal Cycle
                         </h2>
                         <div className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase italic">
-                            {isSeasonOver ? "Final Era" : `Chapter ${currentWeekNumber}`}
+                            {isSeasonOver ? "Final Era" : `Floor ${currentWeekNumber}`}
                         </div>
                         <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">
                             The weave is steady. {isSeasonOver ? "The chronicle is complete." : "The fates await your command."}
@@ -89,7 +89,7 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
                                 {isLoading ? "⏳" : isSeasonOver ? "⌛" : isConfirming ? "⚠️" : "⚡"}
                             </span>
                             <span>
-                                {isLoading ? "Channeling Temporal Energy..." : isSeasonOver ? "Chronicle Closed" : isConfirming ? "SEAL THE FATES (CLICK AGAIN)" : `Initiate Convergence: Chapter ${currentWeekNumber}`}
+                                {isLoading ? "Channeling Temporal Energy..." : isSeasonOver ? "Chronicle Closed" : isConfirming ? "SEAL THE FATES (CLICK AGAIN)" : `Initiate Convergence: Floor ${currentWeekNumber}`}
                             </span>
                         </div>
                         {/* Interactive Sparkle Layer */}
@@ -138,7 +138,7 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
                     <h4 className="font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> System: Battle Status Pulse
                     </h4>
-                    <span className="text-[8px] opacity-40 uppercase">Chapter {currentWeekNumber} Stream</span>
+                    <span className="text-[8px] opacity-40 uppercase">Floor {currentWeekNumber} Stream</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {debugMatchups?.length > 0 ? (

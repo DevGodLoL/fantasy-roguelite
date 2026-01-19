@@ -214,13 +214,15 @@ export default function RosterManager({ leagueId, teamId, slots, readOnly = fals
             {/* Starters Grid */}
             <div className="bg-black/40 backdrop-blur-sm border border-purple-500/20 rounded-3xl overflow-hidden">
                 <div className="p-4 border-b border-purple-500/10 bg-purple-500/5">
-                    <div className="flex items-center gap-3">
-                        <span className="text-lg">⚔️</span>
-                        <span className="text-xs font-black uppercase tracking-widest text-purple-400">
-                            Starting Lineup
-                        </span>
-                        <span className="text-[10px] text-zinc-500 font-bold">
-                            {starters.filter(s => s.player).length}/{starters.length} Active
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-widest text-purple-400">
+                                Active Starters
+                            </span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-bold bg-zinc-800/50 px-2 py-1 rounded-lg">
+                            {starters.filter(s => s.player).length}/{starters.length} Deployed
                         </span>
                     </div>
                 </div>
