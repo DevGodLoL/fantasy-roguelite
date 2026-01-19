@@ -52,23 +52,23 @@ export const QUESTS: QuestDefinition[] = [
     {
         id: 'point_god',
         name: 'The Point God',
-        description: 'Score 200+ points in a single week.',
+        description: 'Score 180+ points in a single week.',
         lore: 'Such power... it radiates from your warriors like divine light.',
         category: 'legendary',
         icon: '⚡',
         reward: { type: 'artifact', itemName: 'Lightning Crown' },
-        requirement: { type: 'points_single', target: 200 },
+        requirement: { type: 'points_single', target: 180 },
         rarity: 'legendary'
     },
     {
         id: 'season_mvp',
         name: 'Season MVP',
-        description: 'Accumulate 2000 total points across the season.',
+        description: 'Accumulate 1800 total points across the season.',
         lore: 'Your army has carved a path of destruction through the realm.',
         category: 'legendary',
         icon: '🌟',
         reward: { type: 'bonus_next_season', amount: 500, itemName: '+500 Starting Gold' },
-        requirement: { type: 'points_total', target: 2000 },
+        requirement: { type: 'points_total', target: 1800 },
         rarity: 'legendary'
     },
 
@@ -89,12 +89,12 @@ export const QUESTS: QuestDefinition[] = [
     {
         id: 'playoff_bound',
         name: 'Playoff Bound',
-        description: 'Qualify for the playoffs (Top 4 seed).',
+        description: 'Qualify for the playoffs (Top 6 seed).',
         lore: 'The tournament awaits. Only the worthy may enter.',
         category: 'season',
         icon: '🏆',
         reward: { type: 'gold', amount: 500 },
-        requirement: { type: 'playoff_seed', target: 4 },
+        requirement: { type: 'playoff_seed', target: 6 },
         rarity: 'epic'
     },
     {
@@ -133,12 +133,12 @@ export const QUESTS: QuestDefinition[] = [
     {
         id: 'hoarder_supreme',
         name: 'Hoarder Supreme',
-        description: 'Own 10 artifacts simultaneously.',
+        description: 'Own 7 artifacts simultaneously.',
         lore: 'Your vault overflows with mystical treasures.',
         category: 'season',
         icon: '🗝️',
         reward: { type: 'artifact', itemName: 'Collector\'s Vault' },
-        requirement: { type: 'artifacts_owned', target: 10 },
+        requirement: { type: 'artifacts_owned', target: 7 },
         rarity: 'epic'
     },
 
@@ -370,8 +370,8 @@ export const QUESTS: QuestDefinition[] = [
     {
         id: 'hidden_perfectionist',
         name: 'The Perfectionist',
-        description: 'Win every single matchup of the season.',
-        lore: 'Perfection achieved. The realm bows before you.',
+        description: 'Complete the regular season with a 14-0 record.',
+        lore: 'Perfection is not a myth; it is your legacy.',
         category: 'hidden',
         icon: '💎',
         reward: { type: 'title', itemName: 'The Perfectionist' },
@@ -381,8 +381,8 @@ export const QUESTS: QuestDefinition[] = [
     {
         id: 'hidden_underdog',
         name: 'The Underdog',
-        description: 'Win after being down 30+ points at halftime.',
-        lore: 'Against all odds, you rose.',
+        description: 'Win a matchup against a team with +30 more Prowess than you.',
+        lore: 'The taller they are, the harder they fall.',
         category: 'hidden',
         icon: '🐺',
         reward: { type: 'title', itemName: 'The Underdog' },
@@ -392,13 +392,57 @@ export const QUESTS: QuestDefinition[] = [
     {
         id: 'hidden_broke',
         name: 'Rags to Riches',
-        description: 'Win a matchup while having 0 gold.',
-        lore: 'Wealth means nothing. Skill is everything.',
+        description: 'Win a matchup while having less than 50 gold.',
+        lore: 'Wealth means nothing. Prowess is everything.',
         category: 'hidden',
         icon: '🪙',
         reward: { type: 'gold', amount: 500 },
         requirement: { type: 'wins', target: 1 },
         rarity: 'rare'
+    },
+    {
+        id: 'hidden_giant_slayer',
+        name: 'Giant Slayer',
+        description: 'Defeat the current #1 ranked team.',
+        lore: 'No king rules forever.',
+        category: 'hidden',
+        icon: '🏹',
+        reward: { type: 'artifact', itemName: 'Sling of David' },
+        requirement: { type: 'wins', target: 1 },
+        rarity: 'epic'
+    },
+    {
+        id: 'hidden_hoarder',
+        name: 'Golden Hoarding',
+        description: 'Amass 1500 gold in your vault.',
+        lore: 'Dragon fire burns in your treasure room.',
+        category: 'hidden',
+        icon: '🐲',
+        reward: { type: 'bonus_next_season', amount: 300, itemName: 'Next Season Interest' },
+        requirement: { type: 'gold_earned', target: 1500 },
+        rarity: 'rare'
+    },
+    {
+        id: 'hidden_close_shave',
+        name: 'Close Shave',
+        description: 'Win a matchup by exactly 1 point.',
+        lore: 'A hair\'s breadth between victory and total defeat.',
+        category: 'hidden',
+        icon: '🪒',
+        reward: { type: 'gold', amount: 400 },
+        requirement: { type: 'close_wins', target: 1 },
+        rarity: 'rare'
+    },
+    {
+        id: 'hidden_unlucky',
+        name: 'Unlucky Legend',
+        description: 'Lose a matchup despite scoring 160+ points.',
+        lore: 'The gods themselves conspired against your triumph.',
+        category: 'hidden',
+        icon: '🥀',
+        reward: { type: 'reroll', amount: 5 },
+        requirement: { type: 'losses', target: 1 },
+        rarity: 'epic'
     },
 ];
 

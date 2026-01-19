@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import React, { useState } from "react";
 
 interface TeamStats {
     id: string;
@@ -25,7 +25,7 @@ type Tier = 'ascended' | 'vanguard' | 'legion';
 
 function getTier(rank: number): Tier {
     if (rank <= 2) return 'ascended';
-    if (rank <= 5) return 'vanguard';
+    if (rank <= 6) return 'vanguard';
     return 'legion';
 }
 
@@ -123,118 +123,119 @@ export default function StandingsTable({ leagueId, teams }: StandingsTableProps)
                             const config = TIER_CONFIG[tier];
 
                             return (
-                                <tr
-                                    key={team.id}
-                                    className={`
-                                        transition-all duration-300 group/row
-                                        ${isUser ? 'bg-purple-500/[0.03]' : 'hover:bg-white/[0.02]'}
-                                        relative
-                                    `}
-                                >
-                                    {/* Rank */}
-                                    <td className="px-3 sm:px-6 py-4 sm:py-8 text-center relative">
-                                        {isUser && (
-                                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 sm:h-12 bg-purple-500 rounded-r-full shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
-                                        )}
-                                        <div className="flex flex-col items-center gap-1">
-                                            <span className={`text-xl sm:text-2xl font-black italic tracking-tighter ${config.text}`}>
-                                                {rank < 10 ? `0${rank}` : rank}
-                                            </span>
-                                            {rank <= 3 && <span className="text-[10px] sm:text-xs">{config.icon}</span>}
-                                        </div>
-                                    </td>
-
-                                    {/* Commander */}
-                                    <td className="px-3 sm:px-6 py-4 sm:py-8 max-w-[120px] sm:max-w-none">
-                                        <Link
-                                            href={`/league/${leagueId}/team/${team.id}`}
-                                            className="group/link flex items-center gap-3 sm:gap-5 outline-none"
-                                        >
-                                            {/* Sigil */}
-                                            <div className={`
-                                                relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-sm sm:text-xl font-black tracking-tighter shrink-0
-                                                transition-all duration-500 group-hover/link:scale-110 group-hover/link:rotate-3
-                                                ${config.bg} ${config.border} border-2 shadow-lg ${config.glow}
-                                            `}>
-                                                {team.name.charAt(0)}
-                                                {/* Corner Accent */}
-                                                <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 border-t-2 border-r-2 border-white/20 rounded-tr-sm" />
-                                            </div>
-
-                                            <div className="flex flex-col min-w-0">
-                                                <span className={`text-sm sm:text-lg font-black uppercase tracking-tight transition-colors truncate ${isUser ? 'text-purple-300' : 'text-white group-hover/link:text-purple-400'}`}>
-                                                    {team.name}
+                                <React.Fragment key={team.id}>
+                                    <tr
+                                        className={`
+                                            transition-all duration-300 group/row
+                                            ${isUser ? 'bg-purple-500/[0.03]' : 'hover:bg-white/[0.02]'}
+                                            relative
+                                        `}
+                                    >
+                                        {/* Rank */}
+                                        <td className="px-3 sm:px-6 py-4 sm:py-8 text-center relative">
+                                            {isUser && (
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 sm:h-12 bg-purple-500 rounded-r-full shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+                                            )}
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className={`text-xl sm:text-2xl font-black italic tracking-tighter ${config.text}`}>
+                                                    {rank < 10 ? `0${rank}` : rank}
                                                 </span>
-                                                <div className="flex items-center gap-1 sm:gap-2">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded truncate">
-                                                        {team.ownerName}
-                                                    </span>
-                                                    {isUser && (
-                                                        <span className="text-[7px] sm:text-[8px] font-black text-purple-400 uppercase tracking-widest sm:tracking-[0.2em] animate-pulse whitespace-nowrap">
-                                                            YOU
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                {rank <= 3 && <span className="text-[10px] sm:text-xs">{config.icon}</span>}
                                             </div>
-                                        </Link>
-                                    </td>
+                                        </td>
 
-                                    {/* Campaign Record */}
-                                    <td className="px-3 sm:px-6 py-4 sm:py-8 text-center">
-                                        <div className="inline-flex flex-col items-center gap-1">
-                                            <div className="flex items-center gap-1 sm:gap-2 font-mono text-base sm:text-xl font-black">
-                                                <span className="text-emerald-500">{team.wins}</span>
-                                                <span className="text-zinc-700">/</span>
-                                                <span className="text-red-500">{team.losses}</span>
-                                            </div>
-                                            <div className="text-[7px] sm:text-[8px] font-black text-zinc-600 uppercase tracking-widest whitespace-nowrap">
-                                                Record
-                                            </div>
-                                        </div>
-                                    </td>
-
-                                    {/* Prowess */}
-                                    <td className="px-3 sm:px-6 py-4 sm:py-8 text-right">
-                                        <div className="flex flex-col items-end gap-1 sm:gap-2">
-                                            <div className="flex items-baseline gap-1 sm:gap-2">
-                                                <span className="text-[10px] sm:text-xs font-black text-emerald-400/60 font-mono italic">ATK</span>
-                                                <span className="text-base sm:text-lg font-black text-white italic tracking-tighter">{team.pf.toFixed(1)}</span>
-                                            </div>
-                                            <div className="h-1 w-20 sm:h-1.5 sm:w-32 bg-zinc-900 rounded-full overflow-hidden p-0.5 border border-white/5 hidden sm:block">
-                                                <div
-                                                    className={`h-full rounded-full transition-all duration-1000 ${rank <= 3 ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 'bg-gradient-to-r from-purple-600 to-blue-500'}`}
-                                                    style={{ width: `${Math.min((team.pf / 1500) * 100, 100)}%` }}
-                                                />
-                                            </div>
-                                            <div className="flex items-baseline gap-1 sm:gap-2">
-                                                <span className="text-[8px] sm:text-[9px] font-black text-red-400/40 font-mono">DEF</span>
-                                                <span className="text-xs sm:text-sm font-bold text-zinc-500 font-mono tracking-tighter">{team.pa.toFixed(1)}</span>
-                                            </div>
-                                        </div>
-                                    </td>
-
-                                    {/* Momentum / Aura */}
-                                    <td className="px-6 py-8 text-center hidden md:table-cell">
-                                        {team.streak.count > 0 && (
-                                            <div className="flex flex-col items-center gap-1 group/aura">
+                                        {/* Commander */}
+                                        <td className="px-3 sm:px-6 py-4 sm:py-8 max-w-[120px] sm:max-w-none">
+                                            <Link
+                                                href={`/league/${leagueId}/team/${team.id}`}
+                                                className="group/link flex items-center gap-3 sm:gap-5 outline-none"
+                                            >
+                                                {/* Sigil */}
                                                 <div className={`
-                                                    relative w-10 h-10 rounded-full flex items-center justify-center text-lg
-                                                    transition-transform duration-500 group-hover/aura:scale-125
-                                                    ${team.streak.type === 'W'
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-                                                        : 'bg-red-500/10 text-red-400 border border-red-500/30'
-                                                    }
+                                                    relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-sm sm:text-xl font-black tracking-tighter shrink-0
+                                                    transition-all duration-500 group-hover/link:scale-110 group-hover/link:rotate-3
+                                                    ${config.bg} ${config.border} border-2 shadow-lg ${config.glow}
                                                 `}>
-                                                    {team.streak.type === 'W' ? '🔥' : '💀'}
-                                                    {/* Orbiting particles */}
-                                                    <div className="absolute inset-0 rounded-full border border-dashed border-current opacity-20 animate-[spin_10s_linear_infinite]" />
+                                                    {team.name.charAt(0)}
+                                                    {/* Corner Accent */}
+                                                    <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 border-t-2 border-r-2 border-white/20 rounded-tr-sm" />
                                                 </div>
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 italic">
-                                                    {team.streak.count}{team.streak.type === 'W' ? ' Burn' : ' Chill'}
-                                                </span>
+
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className={`text-sm sm:text-lg font-black uppercase tracking-tight transition-colors truncate ${isUser ? 'text-purple-300' : 'text-white group-hover/link:text-purple-400'}`}>
+                                                        {team.name}
+                                                    </span>
+                                                    <div className="flex items-center gap-1 sm:gap-2">
+                                                        <span className="text-[8px] sm:text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded truncate">
+                                                            {team.ownerName}
+                                                        </span>
+                                                        {isUser && (
+                                                            <span className="text-[7px] sm:text-[8px] font-black text-purple-400 uppercase tracking-widest sm:tracking-[0.2em] animate-pulse whitespace-nowrap">
+                                                                YOU
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        </td>
+
+                                        {/* Campaign Record */}
+                                        <td className="px-3 sm:px-6 py-4 sm:py-8 text-center">
+                                            <div className="inline-flex flex-col items-center gap-1">
+                                                <div className="flex items-center gap-1 sm:gap-2 font-mono text-base sm:text-xl font-black">
+                                                    <span className="text-emerald-500">{team.wins}</span>
+                                                    <span className="text-zinc-700">/</span>
+                                                    <span className="text-red-500">{team.losses}</span>
+                                                </div>
+                                                <div className="text-[7px] sm:text-[8px] font-black text-zinc-600 uppercase tracking-widest whitespace-nowrap">
+                                                    Record
+                                                </div>
                                             </div>
-                                        )}
-                                    </td>
+                                        </td>
+
+                                        {/* Prowess */}
+                                        <td className="px-3 sm:px-6 py-4 sm:py-8 text-right">
+                                            <div className="flex flex-col items-end gap-1 sm:gap-2">
+                                                <div className="flex items-baseline gap-1 sm:gap-2">
+                                                    <span className="text-[10px] sm:text-xs font-black text-emerald-400/60 font-mono italic">ATK</span>
+                                                    <span className="text-base sm:text-lg font-black text-white italic tracking-tighter">{team.pf.toFixed(1)}</span>
+                                                </div>
+                                                <div className="h-1 w-20 sm:h-1.5 sm:w-32 bg-zinc-900 rounded-full overflow-hidden p-0.5 border border-white/5 hidden sm:block">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-1000 ${rank <= 3 ? 'bg-gradient-to-r from-amber-600 to-amber-400' : 'bg-gradient-to-r from-purple-600 to-blue-500'}`}
+                                                        style={{ width: `${Math.min((team.pf / 1500) * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                                <div className="flex items-baseline gap-1 sm:gap-2">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-red-400/40 font-mono">DEF</span>
+                                                    <span className="text-xs sm:text-sm font-bold text-zinc-500 font-mono tracking-tighter">{team.pa.toFixed(1)}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* Momentum / Aura */}
+                                        <td className="px-6 py-8 text-center hidden md:table-cell">
+                                            {team.streak.count > 0 && (
+                                                <div className="flex flex-col items-center gap-1 group/aura">
+                                                    <div className={`
+                                                        relative w-10 h-10 rounded-full flex items-center justify-center text-lg
+                                                        transition-transform duration-500 group-hover/aura:scale-125
+                                                        ${team.streak.type === 'W'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                                                            : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                                                        }
+                                                    `}>
+                                                        {team.streak.type === 'W' ? '🔥' : '💀'}
+                                                        {/* Orbiting particles */}
+                                                        <div className="absolute inset-0 rounded-full border border-dashed border-current opacity-20 animate-[spin_10s_linear_infinite]" />
+                                                    </div>
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 italic">
+                                                        {team.streak.count}{team.streak.type === 'W' ? ' Burn' : ' Chill'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
                                     {/* Playoff Cutoff Line */}
                                     {index === 5 && (
                                         <tr key="playoff-cutoff">
@@ -252,7 +253,7 @@ export default function StandingsTable({ leagueId, teams }: StandingsTableProps)
                                             </td>
                                         </tr>
                                     )}
-                                </tr>
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
