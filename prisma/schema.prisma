@@ -20,6 +20,10 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Meta Progression
+  commanderLevel Int @default(1)
+  experience     Int @default(0)
+
   leagues       LeagueMember[]
   ownedLeagues  League[]
   teams         Team[]
@@ -100,6 +104,7 @@ model Team {
   playoffSeed       Int?
   nextSeasonBonusGold Int     @default(0)
   nextSeasonBonusRerolls Int  @default(0)
+  rewardsClaimed    Boolean @default(false)
 
   league         League             @relation(fields: [leagueId], references: [id])
   owner          User               @relation(fields: [ownerId], references: [id])

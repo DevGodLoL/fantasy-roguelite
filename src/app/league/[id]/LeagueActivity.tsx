@@ -1,13 +1,13 @@
 import { db } from "@/lib/prisma";
 
-export default async function LeagueActivity({ leagueId }: { leagueId: string }) {
+export default async function LeagueActivity({ leagueId, limit = 10 }: { leagueId: string; limit?: number }) {
     const events = await db.waiverClaim.findMany({
         where: {
             team: { leagueId },
             status: "successful",
         },
         orderBy: { processedAt: "desc" },
-        take: 8,
+        take: limit,
         include: {
             team: true,
             playerToAdd: true,

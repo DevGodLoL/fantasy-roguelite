@@ -6,6 +6,9 @@ import StandingsTable from "./StandingsTable";
 import LeagueActivity from "./LeagueActivity";
 import RitualResolutionModal from "@/components/RitualResolutionModal";
 import DungeonProgress from "@/components/DungeonProgress";
+import CommanderBadge from "@/components/CommanderBadge";
+import { getCommanderProfile } from "@/lib/game-logic/progression";
+import { ArrowUpRight, Shield, ShoppingBag, Scroll, Map as MapIcon, Calendar, Trophy, FileText, Settings, Coins } from "lucide-react";
 
 // Week flavor names for roguelite theme
 const WEEK_NAMES = [
@@ -132,6 +135,7 @@ export default async function LeaguePage({
   // User team identification
   const userTeam = league.teams.find((t) => t.name === "The DevGods") || league.teams[0];
   const userStats = teamStatsMap.get(userTeam.id);
+  const commanderProfile = await getCommanderProfile(userTeam.ownerId);
 
   // Calculate user rank
   const sortedTeams = [...teamStats].sort((a, b) => {
@@ -188,301 +192,216 @@ export default async function LeaguePage({
         />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-8 lg:p-12 space-y-12">
+      <div className="relative z-10 max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* HERO SECTION: THE WAR ROOM */}
+        {/* HEADER & TOP NAV */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <header className="relative">
-          {/* Background glow */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-amber-500/10 rounded-3xl blur-3xl -z-10" />
-
-          <div className="space-y-8">
+        <header className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center border-b border-white/5 pb-8">
+          <div className="space-y-1">
             {/* Breadcrumb */}
             <Link
               href="/leagues"
-              className="text-zinc-500 hover:text-purple-400 transition-colors text-sm font-medium flex items-center gap-2 group inline-flex"
+              className="text-zinc-500 hover:text-purple-400 transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-2 group mb-2"
             >
               <span className="group-hover:-translate-x-1 transition-transform">←</span>
               Return to the Realm
             </Link>
+            <h1 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter">
+              <span className="bg-gradient-to-r from-purple-400 via-amber-200 to-purple-400 bg-clip-text text-transparent">
+                The Eternal Gridiron
+              </span>
+            </h1>
+            <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Season 1 • Floor {currentWeek?.number || 1} • {WEEK_NAMES[((currentWeek?.number || 1) - 1) % WEEK_NAMES.length]}
+            </p>
+          </div>
 
-            {/* Main Hero */}
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-              {/* Catchy Title Section */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl animate-pulse drop-shadow-[0_0_15px_rgba(147,51,234,0.5)]">⚔️</span>
-                  <div className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md">
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">
-                      Season 1 • Floor {currentWeek?.number || 1}
-                    </span>
-                  </div>
-                </div>
+          <div className="flex items-center gap-4">
+            <CommanderBadge profile={commanderProfile} />
 
-                <div className="relative group">
-                  {/* Shadow Title for depth */}
-                  <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-amber-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="h-10 w-px bg-white/10 mx-2" />
 
-                  <h1 className="relative text-5xl xs:text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-none italic uppercase">
-                    <span className="block bg-gradient-to-b from-white via-white to-zinc-500 bg-clip-text text-transparent transform -skew-x-6 sm:-skew-x-12">
-                      The Eternal
-                    </span>
-                    <span className="block bg-gradient-to-r from-purple-400 via-amber-400 to-blue-400 bg-clip-text text-transparent transform -skew-x-6 sm:-skew-x-12 mt-[-0.05em] sm:mt-[-0.1em]">
-                      Gridiron
-                    </span>
-                  </h1>
-                </div>
-
-                {currentWeek && (
-                  <div className="flex items-center gap-2 sm:gap-4 mt-2">
-                    <div className="hidden xs:block h-px w-8 sm:w-12 bg-gradient-to-l from-purple-500/50 to-transparent" />
-                    <p className="text-[10px] sm:text-sm font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] text-zinc-500 italic">
-                      Roguelite Chronicles: {WEEK_NAMES[(currentWeek.number - 1) % WEEK_NAMES.length]}
-                    </p>
-                    <div className="hidden xs:block h-px w-8 sm:w-12 bg-gradient-to-r from-purple-500/50 to-transparent" />
-                  </div>
-                )}
+            <div className="flex gap-6">
+              <div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Rank</div>
+                <div className="text-xl font-black text-white">#{userRank}</div>
               </div>
-
-              {/* Quick Stats Badge */}
-              <div className="flex flex-wrap gap-2 sm:gap-4 lg:justify-end">
-                <div className="flex-1 min-w-[80px] sm:min-w-[120px] px-4 sm:px-6 py-3 sm:py-4 bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl text-center">
-                  <div className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">
-                    #{userRank}
-                  </div>
-                  <div className="text-[8px] sm:text-[10px] uppercase tracking-widest text-zinc-500 font-bold mt-1">Your Rank</div>
-                </div>
-                <div className="flex-1 min-w-[80px] sm:min-w-[120px] px-4 sm:px-6 py-3 sm:py-4 bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl text-center">
-                  <div className="text-2xl sm:text-3xl font-black text-white">
-                    {userStats?.wins}-{userStats?.losses}
-                  </div>
-                  <div className="text-[8px] sm:text-[10px] uppercase tracking-widest text-zinc-500 font-bold mt-1">Record</div>
-                </div>
-                <div className="flex-1 min-w-[80px] sm:min-w-[120px] px-4 sm:px-6 py-3 sm:py-4 bg-black/40 backdrop-blur-sm border border-amber-500/20 rounded-2xl text-center">
-                  <div className="text-2xl sm:text-3xl font-black text-amber-400">
-                    {userArtifacts}
-                  </div>
-                  <div className="text-[8px] sm:text-[10px] uppercase tracking-widest text-amber-500/60 font-bold mt-1">Artifacts</div>
-                </div>
+              <div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Record</div>
+                <div className="text-xl font-black text-white">{userStats?.wins}-{userStats?.losses}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Artifacts</div>
+                <div className="text-xl font-black text-amber-400">{userArtifacts}</div>
               </div>
             </div>
-
-            {/* Navigation Pills */}
-            <nav className="flex flex-wrap gap-3 pt-4 border-t border-white/5">
-              {league.draft?.status !== 'completed' ? (
-                <Link
-                  href={`/league/${id}/draft`}
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:shadow-[0_0_40px_rgba(59,130,246,0.5)]"
-                >
-                  ⚔️ Enter Draft Room
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    href={`/league/${id}/team/${userTeam.id}`}
-                    className="px-6 py-3 bg-white hover:bg-zinc-100 text-black font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]"
-                  >
-                    🛡️ My Army
-                  </Link>
-                  <Link
-                    href={`/league/${id}/shop`}
-                    className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(250,204,21,0.3)]"
-                  >
-                    🏪 Shop
-                  </Link>
-                  <Link
-                    href={`/league/${id}/inventory`}
-                    className="px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]"
-                  >
-                    ✨ Artifacts
-                  </Link>
-                  <Link
-                    href={`/league/${id}/quests`}
-                    className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(251,146,60,0.3)]"
-                  >
-                    📜 Quests
-                  </Link>
-                  <Link
-                    href={`/league/${id}/waivers`}
-                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs rounded-xl transition-all"
-                  >
-                    🔮 Waiver Wire
-                  </Link>
-                  <Link
-                    href={`/league/${id}/schedule`}
-                    className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase text-xs rounded-xl transition-all"
-                  >
-                    📜 Battle Schedule
-                  </Link>
-                  <Link
-                    href={`/league/${id}/campaign`}
-                    className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)]"
-                  >
-                    🗺️ Campaign Map
-                  </Link>
-                  <Link
-                    href={`/league/${id}/playoffs`}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]"
-                  >
-                    🏆 Playoff Bracket
-                  </Link>
-                  <Link
-                    href={`/league/${id}/transactions`}
-                    className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black uppercase text-xs rounded-xl transition-all"
-                  >
-                    📋 Logs
-                  </Link>
-                  <Link
-                    href={`/league/${id}/admin`}
-                    className="px-6 py-3 bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-500/30 font-black uppercase text-xs rounded-xl transition-all"
-                  >
-                    ⚙️ Admin
-                  </Link>
-                </>
-              )}
-            </nav>
           </div>
         </header>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* THIS WEEK: THE ARENA */}
+        {/* COMMAND CENTER (Quick Actions) */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {userMatchup && opponent && opponentStats && currentWeek && (
-          <section className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-purple-500/10 to-blue-500/5 rounded-3xl blur-3xl -z-10" />
+        <nav className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <Link href={`/league/${id}/team/${userTeam.id}`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
+            <Shield className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" />
+            <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-white">My Army</div>
+          </Link>
+          <Link href={`/league/${id}/shop`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
+            <ShoppingBag className="w-6 h-6 text-amber-400 mb-2 group-hover:scale-110 transition-transform" />
+            <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-amber-400">Shop</div>
+          </Link>
+          <Link href={`/league/${id}/quests`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
+            <Scroll className="w-6 h-6 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
+            <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-purple-400">Quests</div>
+          </Link>
+          <Link href={`/league/${id}/campaign`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
+            <MapIcon className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
+            <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-blue-400">Campaign</div>
+          </Link>
+          <Link href={`/league/${id}/schedule`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
+            <Calendar className="w-6 h-6 text-zinc-500 mb-2 group-hover:scale-110 transition-transform" />
+            <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-white">Schedule</div>
+          </Link>
+          <div className="p-1 flex items-center justify-center gap-2">
+            <Link href={`/league/${id}/transactions`} className="p-3 bg-zinc-900/30 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-colors" title="Logs">
+              <FileText size={18} />
+            </Link>
+            <Link href={`/league/${id}/playoffs`} className="p-3 bg-zinc-900/30 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-colors" title="Playoffs">
+              <Trophy size={18} />
+            </Link>
+            <Link href={`/league/${id}/admin`} className="p-3 bg-zinc-900/30 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-red-400 transition-colors" title="Settings">
+              <Settings size={18} />
+            </Link>
+          </div>
+        </nav>
 
-            <div className="p-8 bg-black/40 backdrop-blur-sm border border-white/10 rounded-3xl">
-              {/* Section Header */}
-              <div className="flex items-center gap-4 mb-8">
-                <div className="text-3xl">⚔️</div>
-                <div>
-                  <h2 className="text-2xl font-black uppercase tracking-tight bg-gradient-to-r from-red-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
-                    This Week: The Arena
-                  </h2>
-                  <p className="text-sm text-zinc-500">
-                    Week {currentWeek.number} • "{WEEK_NAMES[(currentWeek.number - 1) % WEEK_NAMES.length]}"
-                  </p>
+
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* MAIN BENTO GRID */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <div className="grid lg:grid-cols-12 gap-6">
+
+          {/* LEFT COLUMN: ACTION & DATA (8 Cols) */}
+          <div className="lg:col-span-8 space-y-8">
+
+            {/* 1. MATCHUP CARD (THE ARENA) */}
+            {userMatchup && opponent && opponentStats && currentWeek ? (
+              <div className="relative group overflow-hidden rounded-3xl border border-white/10 bg-black/40">
+                {/* Background FX */}
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-amber-900/20 opacity-50 group-hover:opacity-70 transition-opacity" />
+
+                <div className="relative p-8">
+                  <div className="flex justify-between items-start mb-8">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-xs font-black uppercase tracking-widest text-red-500">Live Battle</span>
+                      </div>
+                      <h2 className="text-2xl font-black uppercase italic">The Arena</h2>
+                    </div>
+                    <Link
+                      href={`/league/${id}/week/${currentWeek.number}`}
+                      className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-black uppercase text-xs hover:scale-105 transition-transform"
+                    >
+                      Enter Battle <ArrowUpRight size={14} />
+                    </Link>
+                  </div>
+
+                  {/* Matchup Row */}
+                  <div className="flex items-center justify-between gap-4">
+                    {/* YOU */}
+                    <div className="flex-1 flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-full bg-emerald-900/50 border-2 border-emerald-500/30 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                        🛡️
+                      </div>
+                      <div className="text-center">
+                        <div className="font-black text-lg leading-none">{userTeam.name}</div>
+                        <div className="text-xs font-bold text-emerald-500 mt-1">{userStats?.wins}-{userStats?.losses}</div>
+                      </div>
+                    </div>
+
+                    {/* VS */}
+                    <div className="flex flex-col items-center justify-center w-24">
+                      <div className="text-4xl font-black italic text-zinc-700">VS</div>
+                      <div className="text-[10px] font-black uppercase text-zinc-600 tracking-widest mt-1">Week {currentWeek.number}</div>
+                    </div>
+
+                    {/* OPPONENT */}
+                    <div className="flex-1 flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-full bg-red-900/50 border-2 border-red-500/30 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                        ⚔️
+                      </div>
+                      <div className="text-center">
+                        <div className="font-black text-lg leading-none">{opponent.name}</div>
+                        <div className="text-xs font-bold text-red-500 mt-1">{opponentStats.wins}-{opponentStats.losses}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* VS Battle Card */}
-              <div className="grid md:grid-cols-3 gap-6 items-center">
-                {/* Your Team */}
-                <div className="text-center p-6 bg-gradient-to-br from-emerald-900/20 to-emerald-950/40 border border-emerald-500/20 rounded-2xl">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-4xl shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-                    🛡️
-                  </div>
-                  <h3 className="text-xl font-black text-white mb-1">{userTeam.name}</h3>
-                  <div className="text-emerald-400 font-bold">
-                    {userStats?.wins}-{userStats?.losses}-{userStats?.ties}
-                  </div>
-                  <div className="mt-3 flex items-center justify-center gap-2">
-                    {userStats?.streak.type === 'W' && userStats.streak.count > 0 && (
-                      <span className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded text-xs font-bold text-emerald-400">
-                        🔥 W{userStats.streak.count}
-                      </span>
-                    )}
-                    {userStats?.streak.type === 'L' && userStats.streak.count > 0 && (
-                      <span className="px-2 py-1 bg-red-500/20 border border-red-500/30 rounded text-xs font-bold text-red-400">
-                        💀 L{userStats.streak.count}
-                      </span>
-                    )}
-                    {userArtifacts > 0 && (
-                      <span className="px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded text-xs font-bold text-amber-400">
-                        ✨ {userArtifacts}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* VS Divider */}
-                <div className="text-center py-4">
-                  <div className="relative">
-                    <div className="text-6xl font-black bg-gradient-to-b from-white to-zinc-600 bg-clip-text text-transparent">
-                      VS
-                    </div>
-                    <div className="absolute inset-0 text-6xl font-black text-white/5 blur-xl">
-                      VS
-                    </div>
-                  </div>
-                  <Link
-                    href={`/league/${id}/week/${currentWeek.number}`}
-                    className="inline-block mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-black uppercase text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)] hover:shadow-[0_0_30px_rgba(147,51,234,0.5)]"
-                  >
-                    Enter Battle →
-                  </Link>
-                </div>
-
-                {/* Opponent */}
-                <div className="text-center p-6 bg-gradient-to-br from-red-900/20 to-red-950/40 border border-red-500/20 rounded-2xl">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center text-4xl shadow-[0_0_30px_rgba(239,68,68,0.3)]">
-                    ⚔️
-                  </div>
-                  <h3 className="text-xl font-black text-white mb-1">{opponent.name}</h3>
-                  <div className="text-red-400 font-bold">
-                    {opponentStats.wins}-{opponentStats.losses}-{opponentStats.ties}
-                  </div>
-                  <div className="mt-3 flex items-center justify-center gap-2">
-                    {opponentStats.streak.type === 'W' && opponentStats.streak.count > 0 && (
-                      <span className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded text-xs font-bold text-emerald-400">
-                        🔥 W{opponentStats.streak.count}
-                      </span>
-                    )}
-                    {opponentStats.streak.type === 'L' && opponentStats.streak.count > 0 && (
-                      <span className="px-2 py-1 bg-red-500/20 border border-red-500/30 rounded text-xs font-bold text-red-400">
-                        💀 L{opponentStats.streak.count}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            ) : (
+              <div className="p-8 rounded-3xl border border-white/10 bg-zinc-900/50 text-center">
+                <div className="text-zinc-500 font-bold">No Active Matchup</div>
+                <div className="text-sm text-zinc-600">The arena is quiet... for now.</div>
               </div>
-            </div>
-          </section>
-        )}
+            )}
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* MAIN CONTENT GRID */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="grid lg:grid-cols-12 gap-12">
-          {/* Main Column: Champions Ranking (8 cols) */}
-          <section className="lg:col-span-8 space-y-8">
-            <div className="flex items-center gap-4">
-              <div className="text-2xl">🏆</div>
-              <h2 className="text-xs font-black uppercase tracking-[0.3em] text-purple-400">
-                Champions&apos; Ranking
-              </h2>
-              <div className="h-px flex-1 bg-gradient-to-r from-purple-500/50 to-transparent" />
-            </div>
-
-            <StandingsTable leagueId={id} teams={teamStats} />
-          </section>
-
-          {/* Sidebar: Activity & Chronicle (4 cols) */}
-          <section className="lg:col-span-4 space-y-10">
-            {/* The Scroll of Fate (Activity Feed) */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="text-xl">📜</div>
-                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-emerald-400">
-                  Scroll of Fate
+            {/* 2. CHAMPIONS RANKING (Full Table) */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-4 px-2">
+                <div className="text-xl">🏆</div>
+                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-purple-400">
+                  Champions&apos; Ranking
                 </h2>
-                <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/50 to-transparent" />
+                <div className="h-px flex-1 bg-gradient-to-r from-purple-500/50 to-transparent" />
               </div>
-              <LeagueActivity leagueId={id} />
+
+              <StandingsTable leagueId={id} teams={teamStats} />
+            </section>
+          </div>
+
+          {/* RIGHT COLUMN: META & INTEL (4 Cols) */}
+          <div className="lg:col-span-4 space-y-6">
+
+            {/* 1. CAMPAIGN STATUS WIDGETS */}
+            <div className="grid gap-4">
+              <div className="p-6 rounded-2xl border border-white/5 bg-zinc-900/30">
+                <div className="flex items-center gap-3 mb-4">
+                  <MapIcon size={20} className="text-blue-500" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-zinc-400">Current Location</h3>
+                </div>
+                <div className="text-2xl font-black text-white mb-1">{WEEK_NAMES[((currentWeek?.number || 1) - 1) % WEEK_NAMES.length]}</div>
+                <div className="text-xs text-blue-400 font-bold uppercase tracking-widest">Floor {currentWeek?.number} / {league.weeks.length}</div>
+
+                <div className="mt-4 h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500" style={{ width: `${(currentWeek?.number || 0) / league.weeks.length * 100}%` }} />
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-white/5 bg-zinc-900/30">
+                <div className="flex items-center gap-3 mb-4">
+                  <Coins size={20} className="text-amber-500" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-zinc-400">Treasury</h3>
+                </div>
+                <div className="text-3xl font-black text-white mb-1">100g</div>
+                <div className="text-xs text-amber-500/60 font-bold uppercase tracking-widest">Available Gold</div>
+                <Link href={`/league/${id}/shop`} className="text-[10px] underline text-zinc-500 hover:text-white mt-2 block">Visit Shop</Link>
+              </div>
             </div>
 
-            {/* Campaign Progress Widget */}
-            <DungeonProgress
-              leagueId={id}
-              currentFloor={currentWeek?.number || 1}
-              floorName={WEEK_NAMES[((currentWeek?.number || 1) - 1) % WEEK_NAMES.length]}
-              totalFloors={league.weeks.length}
-              completedFloors={league.weeks.filter(w => {
-                const weekMatchups = league.matchups.filter(m => m.weekId === w.id);
-                return weekMatchups.length > 0 && weekMatchups.every(m => m.status === 'final');
-              }).length}
-            />
-          </section>
+            {/* 2. ACTIVITY FEED WIDGET */}
+            <div className="p-6 rounded-3xl border border-white/10 bg-black/20 backdrop-blur-md h-fit">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400">Chronicles</h3>
+                <Scroll size={16} className="text-emerald-500" />
+              </div>
+              <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                <LeagueActivity leagueId={id} limit={8} />
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

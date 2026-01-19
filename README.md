@@ -1,50 +1,33 @@
 # Fantasy Roguelite 🏈⚔️
 
-**Version 0.6.0 - "The Quest for Glory Optimization"**
+**Version 0.7.0 - "Ascension of the Commander"**
 
-A next-gen Fantasy Football RPG where you draft a legion, battle AI opponents, and evolve your team with powerful artifacts. Complete 17-week seasons with full playoff support!
+A next-gen Fantasy Football RPG where you draft a legion, battle AI opponents, and evolve your team with powerful artifacts. Now featuring a persistent meta-progression system!
 
 ## 🌟 Key Features
+
+### 💎 The Eternal Gridiron (New Dashboard)
+-   **Command Center:** A complete UI overhaul of the main league dashboard.
+-   **Bento-Grid Layout:** High-impact "Arena" card for live matchups, flanked by "Intel" sidebars.
+-   **Live Battle Integration:** Real-time (simulated) score tracking and "Enter Battle" status.
+-   **Roguelite Trackers:** Direct visibility of Campaign Floors and Gold Treasury.
+
+### 🎖️ Commander System (Meta-Progression)
+-   **Persistent Leveling:** Earn **Prestige XP** across seasons to level up your Commander profile.
+-   **Hall of Valor:** A recap screen at the end of each season to calculate your "Season Score" based on wins, gold, artifacts, and quests.
+-   **The Badge:** Your "Commander LVL" is persistently displayed in the header, showcasing your veteran status.
+-   **Ascension:** "Claim Rewards & Ascend" functionality to bank your XP and prepare for the next run.
 
 ### 🏆 Full Playoff System
 -   **17-Week Seasons:** 14 regular season floors + 3 playoff weeks.
 -   **Automatic Seeding:** Top 6 teams qualify for the championship (1 & 2 get BYE weeks).
 -   **The Playoff Gauntlet:** A premium bracket page at `/league/[id]/playoffs`.
 -   **The Spoils of War:** Improved rewards UI highlighting "The Crown Prince" (Champion) and "The Phoenix Risen" (Consolation winner).
--   **Standings UI:** Accurate top-6 highlight with blue/cyan "Vanguard" tiers and a clear playoff cutoff line.
 
 ### 📜 Quest Log (Optimized!)
 -   **32+ Quests:** Season-long challenges across 4 rarity tiers.
--   **Unified UI:** Consistent progress bars (standardized 8px height) and status lines ("Objective Met", "Impossible", "In Pursuit").
--   **Logic Fixes:** Added "Impossible" state tracking (e.g., Perfect Season fails upon first loss).
--   **Feasibility Tuning:** Adjusted targets for "Point God" and "Season MVP" to be challenging yet achievable.
--   **Hidden Challenges:** Expanded pool of secrets with a dynamic discovery UI—see names, lore, and acquired bounties only after completion.
-
-### 🗺️ Campaign Map
--   **Visual Dungeon Crawl:** Navigate a procedurally-styled campaign map showing all floors.
--   **Playoff Floors:** Weeks 15-17 show distinct golden "🏆 Playoff Round" styling.
--   **Interactive Navigation:** Click floors to jump directly to that week's matchup.
-
-### ⚔️ The Campaign
--   **Roguelike Seasons:** Play through a 14-floor regular season against AI opponents.
--   **Simulation Engine:** Battles resolved using realistic NFL stats simulation.
--   **Gold Economy:** Earn gold from victories to spend in the merchant's shop.
-
-### 📱 Mobile Experience
--   **Responsive Design:** Fully polished layout for mobile browsers.
--   **Touch-Optimized:** Swipeable lists, large tap targets, and vertical stacking.
-
-### 🏪 The Ancient Emporium & armory
--   **Relics:** Persistent artifacts that provide passive bonuses all season.
--   **Ancient Armory:** View your artifacts and their game-altering effects.
-
-### 🃏 The Loot System
--   **Ancient Chests:** Post-battle animated reveal with multi-stage "charging" effects.
--   **Artifact Rarities:**
-    -   **Common (📜):** Simple stat boosts.
-    -   **Rare (⚔️):** Position-specific multipliers.
-    -   **Epic (💎):** Game-altering effects.
-    -   **Legendary (👑):** Unique win conditions.
+-   **Unified UI:** Consistent progress bars and status lines ("Objective Met", "Impossible", "In Pursuit").
+-   **Hidden Challenges:** Secret objectives with dynamic discovery UI.
 
 ## 🛠️ Developer Guide
 
@@ -73,12 +56,11 @@ To avoid the "Prisma Client not found" or "Generating..." hang on Windows:
 2.  **Battle:** Simulate weeks via the **Admin Dashboard** or CLI scripts.
 3.  **Loot:** Open Ancient Chests to upgrade your team.
 4.  **Quests:** Track your path to glory in the **Quest Log**.
+5.  **Ascend:** At season's end, visit the **Hall of Valor** to claim Prestige XP.
 
-#### Playoffs (Weeks 15-17)
-After Week 14, tournaments are automatically generated:
--   **Week 15:** Wildcard Round (#3 vs #6, #4 vs #5)
--   **Week 16:** Semifinals (top seeds enter)
--   **Week 17:** Championship + Toilet Bowl
+#### Simulation Tools
+-   **Mid-Season Jump:** `npx tsx scripts/set-mid-season.ts` (Fast-forwards to Week 8)
+-   **Full Season Sim:** `npx tsx scripts/e2e-season-test.ts` (Runs Week 1-17)
 
 ### 🧪 Testing
 Run a full 17-week simulation:
