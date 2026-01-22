@@ -6,15 +6,22 @@ import { resolve } from "path";
 // Studio's Query Engine often hangs on "Generating..." if paths are not absolute.
 // We resolve EVERYTHING absolutely using Windows-safe path formats.
 const root = process.cwd();
-const rawUrl = process.env["DATABASE_URL"] || "file:./dev.db";
+
+// --- DATABASE PATH UNIFICATION ---
+// If no DATABASE_URL is provided, we default to prisma/dev.db
+// This ensures consistency between CLI (migrate), Client (app), and Scripts (seed).
+const defaultPath = resolve(root, "prisma/dev.db");
+const rawUrl = process.env["DATABASE_URL"] || `file:${defaultPath}`;
 
 let url = rawUrl;
 if (rawUrl.startsWith("file:")) {
-  const relativePath = rawUrl.slice(rawUrl.indexOf(":") + 1);
-  // Ensure the absolute path is correctly formed for Windows (file:C:\...)
-  // Avoid pathToFileURL as the Rust engines (v7) on Windows can fail with os error 161.
-  url = `file:${resolve(root, relativePath)}`;
+  const pathPart = rawUrl.slice(rawUrl.indexOf(":") + 1);
+  // Ensure we resolve relatively to root if it's not already absolute
+  const absolutePath = resolve(root, pathPart);
+  url = `file:${absolutePath}`;
 }
+
+console.log(`[PrismaConfig] Using Database URL: ${url}`);
 
 export default defineConfig({
   // Absolute paths help the Studio sub-process find the files correctly.

@@ -5,17 +5,13 @@ import Database from "better-sqlite3";
 import { resolve } from "path";
 
 const root = process.cwd();
-const rawUrl = process.env.DATABASE_URL || "file:./dev.db";
-let url = rawUrl;
+const defaultDbPath = resolve(root, "prisma/dev.db");
+const url = process.env.DATABASE_URL || `file:${defaultDbPath}`;
 
-if (rawUrl.startsWith("file:")) {
-    const dbPath = rawUrl.slice(rawUrl.indexOf(":") + 1);
-    url = `file:${resolve(root, dbPath)}`;
-}
+console.log(`[MockDraft] Connecting to: ${url}`);
 
 const adapter = new PrismaBetterSqlite3({ url });
 const prisma = new PrismaClient({ adapter });
-
 const USER_TEAM_NAME = "The DevGods";
 
 async function getBestAvailablePlayer(leagueId: string, teamId: string) {

@@ -36,21 +36,16 @@ A next-gen Fantasy Football RPG where you draft a legion, battle AI opponents, a
 -   Node.js 18+
 -   SQLite (via Prisma)
 
-### ⚙️ Setup & Database
-Before running the game, you must configure your environment:
-1.  **Environment:** Copy `.env.example` to `.env`.
-    ```bash
-    cp .env.example .env
-    ```
-2.  **Database Name:** In SQLite, your "database name" is the file path in `.env`. By default, it's `file:./dev.db`. Prisma will automatically create this file during the migration step.
+### ⚙️ Quick Onboarding
+The fastest way to get the game running is to use our automated setup script:
+1.  **Run Setup:** `npm install` then `npm run setup`
+    - *This will automatically create your `.env`, initialize the SQLite database, and seed the world.*
 
-### Quick Start
-1.  **Install:** `npm install`
-2.  **Initialize DB:** `npx prisma migrate dev --name init` (This creates your database file)
-3.  **Seed Personalities:** `npx tsx scripts/seed-archetypes.ts`
-4.  **Seed World:** `npm run seed`
-5.  **Expand Players:** `npx tsx scripts/seed-expanded-players.ts`
-6.  **Run:** `npm run dev`
+### 🏗️ Manual Setup (If preferred)
+1.  **Environment:** `cp .env.example .env`
+2.  **Initialize DB:** `npx prisma migrate dev --name init`
+3.  **Seed World:** `npm run seed`
+4.  **Run:** `npm run dev`
 
 ### 🏗️ Prisma on Windows
 To avoid the "Prisma Client not found" or "Generating..." hang on Windows:

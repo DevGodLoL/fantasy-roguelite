@@ -80,7 +80,11 @@ async function main() {
         }
 
         // 2. Init Prisma - AFTER seed child process is finished
-        const url = `file:${resolve(process.cwd(), "prisma/dev.db")}`;
+        const root = process.cwd();
+        const defaultDbPath = resolve(root, "prisma/dev.db");
+        const url = process.env.DATABASE_URL || `file:${defaultDbPath}`;
+
+        console.log(`[Verify] Connecting to: ${url}`);
         prisma = new PrismaClient({
             datasources: { db: { url } }
         });

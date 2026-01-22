@@ -1,8 +1,15 @@
+import "dotenv/config";
 import { PrismaClient } from "../src/generated/client";
 import { resolve } from "path";
 
-// Standard client for seeding
-const url = `file:${resolve(process.cwd(), "prisma/dev.db")}`;
+// --- DATABASE PATH UNIFICATION ---
+// Use the environment variable if present, otherwise default to prisma/dev.db
+const root = process.cwd();
+const defaultPath = resolve(root, "prisma/dev.db");
+const url = process.env.DATABASE_URL || `file:${defaultPath}`;
+
+console.log(`[Seed] Connecting to database at: ${url}`);
+
 const prisma = new PrismaClient({
   datasources: { db: { url } }
 });

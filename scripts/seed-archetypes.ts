@@ -1,6 +1,14 @@
+import "dotenv/config";
 import { PrismaClient } from '../src/generated/client/index';
+import { resolve } from "path";
 
-const prisma = new PrismaClient();
+const root = process.cwd();
+const defaultDbPath = resolve(root, "prisma/dev.db");
+const url = process.env.DATABASE_URL || `file:${defaultDbPath}`;
+
+const prisma = new PrismaClient({
+    datasources: { db: { url } }
+});
 
 const ARCHETYPES = [
     'AGGRESSIVE',
