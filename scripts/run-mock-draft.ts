@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../src/generated/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import Database from "better-sqlite3";
 import { resolve } from "path";
@@ -10,8 +10,9 @@ const url = process.env.DATABASE_URL || `file:${defaultDbPath}`;
 
 console.log(`[MockDraft] Connecting to: ${url}`);
 
-const adapter = new PrismaBetterSqlite3({ url });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({
+    datasources: { db: { url } }
+});
 const USER_TEAM_NAME = "The DevGods";
 
 async function getBestAvailablePlayer(leagueId: string, teamId: string) {
