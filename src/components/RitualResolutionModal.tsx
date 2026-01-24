@@ -24,6 +24,7 @@ export interface RecapData {
         homeScore: number;
         awayScore: number;
         winner: string;
+        logs: string[];
     }>;
 }
 
@@ -133,18 +134,42 @@ export default function RitualResolutionModal({ leagueId, weekNumber }: { league
                                     <div className="h-px flex-1 bg-gradient-to-l from-transparent to-zinc-800" />
                                 </div>
 
-                                <div className="grid md:grid-cols-2 gap-4">
+                                <div className="grid gap-6">
                                     {data.matchups.map((m, i) => (
-                                        <div key={i} className="bg-zinc-900/40 border border-white/5 p-5 rounded-2xl flex items-center justify-between hover:bg-zinc-800/40 transition">
-                                            <div className={`flex flex-col ${m.winner === m.homeTeam ? 'text-white' : 'text-zinc-600'}`}>
-                                                <span className="text-base font-black truncate max-w-[120px]">{m.homeTeam}</span>
-                                                <span className="text-xl font-mono font-bold">{m.homeScore.toFixed(1)}</span>
+                                        <div key={i} className="group/match bg-zinc-900/40 border border-white/5 rounded-3xl overflow-hidden hover:bg-zinc-800/40 transition-all duration-300">
+                                            <div className="p-6 flex items-center justify-between">
+                                                <div className={`flex flex-col ${m.winner === m.homeTeam ? 'text-white' : 'text-zinc-600'}`}>
+                                                    <span className="text-lg font-black uppercase tracking-tight truncate max-w-[150px]">{m.homeTeam}</span>
+                                                    <span className="text-2xl font-mono font-bold">{m.homeScore.toFixed(1)}</span>
+                                                </div>
+
+                                                <div className="flex flex-col items-center">
+                                                    <div className="text-xs font-black text-zinc-800 px-4 mb-2">VS</div>
+                                                    <div className="h-0.5 w-12 bg-zinc-800" />
+                                                </div>
+
+                                                <div className={`flex flex-col items-end ${m.winner === m.awayTeam ? 'text-white' : 'text-zinc-600'}`}>
+                                                    <span className="text-lg font-black uppercase tracking-tight truncate max-w-[150px]">{m.awayTeam}</span>
+                                                    <span className="text-2xl font-mono font-bold">{m.awayScore.toFixed(1)}</span>
+                                                </div>
                                             </div>
-                                            <div className="text-xl italic font-black text-zinc-800 px-4">VS</div>
-                                            <div className={`flex flex-col items-end ${m.winner === m.awayTeam ? 'text-white' : 'text-zinc-600'}`}>
-                                                <span className="text-base font-black truncate max-w-[120px]">{m.awayTeam}</span>
-                                                <span className="text-xl font-mono font-bold">{m.awayScore.toFixed(1)}</span>
-                                            </div>
+
+                                            {/* Chronicle Logs */}
+                                            {m.logs && m.logs.length > 0 && (
+                                                <div className="px-6 pb-6 pt-2 border-t border-white/5 bg-black/20">
+                                                    <div className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-700 mb-3 flex items-center gap-2">
+                                                        <ScrollText size={10} /> The Chronicle of Conflict
+                                                    </div>
+                                                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                                                        {m.logs.map((log, li) => (
+                                                            <div key={li} className="text-[10px] font-mono text-zinc-500 flex gap-2 leading-relaxed">
+                                                                <span className="text-purple-500/50 shrink-0">◇</span>
+                                                                <span className="opacity-80 break-words">{log}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

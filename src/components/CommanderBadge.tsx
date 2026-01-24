@@ -1,15 +1,16 @@
-import React from 'react';
+import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { CommanderProfile } from '@/lib/game-logic/progression';
 
 interface CommanderBadgeProps {
     profile: CommanderProfile;
+    userId: string;
     className?: string;
 }
 
-export default function CommanderBadge({ profile, className = '' }: CommanderBadgeProps) {
+export default function CommanderBadge({ profile, userId, className = '' }: CommanderBadgeProps) {
     return (
-        <div className={`flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-700/50 rounded-lg group relative ${className}`}>
+        <Link href={`/commander/${userId}`} className={`flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-700/50 rounded-lg group relative hover:border-purple-500/50 transition-all ${className}`}>
             {/* Glow behind */}
             <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -47,6 +48,6 @@ export default function CommanderBadge({ profile, className = '' }: CommanderBad
                     Play seasons to earn XP and unlock permanent perks.
                 </div>
             </div>
-        </div>
+        </Link>
     );
 }

@@ -38,22 +38,37 @@ export async function grantCommanderXP(userId: string, amount: number) {
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) return;
 
-    let newXP = user.experience + amount;
+    // Apply Talent Bonuses (Scholar +5% XP)
+    const talents = JSON.parse(user.unlockedTalents || "[]") as string[];
+    let rewardAmount = amount;
+    if (talents.includes('SCHOLAR')) {
+        rewardAmount = Math.ceil(amount * 1.05);
+    }
+
+    let newXP = user.experience + rewardAmount;
     let newLevel = user.commanderLevel;
+    let newTalentPoints = user.talentPoints;
 
     // Level Up Logic
     while (newXP >= LEVEL_CURVE) {
         newXP -= LEVEL_CURVE;
         newLevel++;
+        newTalentPoints++; // Award 1 point per level
     }
 
     await db.user.update({
         where: { id: userId },
         data: {
             commanderLevel: newLevel,
-            experience: newXP
+            experience: newXP,
+            talentPoints: newTalentPoints
         }
     });
 
-    return { newLevel, newXP, leveledUp: newLevel > user.commanderLevel };
+    return {
+        newLevel,
+        newXP,
+        leveledUp: newLevel > user.commanderLevel,
+        addedTalentPoints: newLevel - user.commanderLevel
+    };
 }

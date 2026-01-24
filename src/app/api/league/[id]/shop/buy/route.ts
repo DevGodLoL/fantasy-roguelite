@@ -11,7 +11,8 @@ export async function POST(
 
     // 1. Verify Team & Gold
     const team = await db.team.findUnique({
-        where: { id: teamId }
+        where: { id: teamId },
+        include: { owner: true }
     });
 
     if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
@@ -23,8 +24,12 @@ export async function POST(
 
     if (!item || !item.price) return NextResponse.json({ error: "Item not found" }, { status: 404 });
 
+    // T2: Haggler talent (5% discount)
+    const talents = JSON.parse((team.owner as any).unlockedTalents || "[]") as string[];
+    const actualPrice = talents.includes('HAGGLER') ? Math.floor(item.price * 0.95) : item.price;
+
     // 3. Transaction
-    if (team.gold < item.price) {
+    if (team.gold < actualPrice) {
         return NextResponse.json({ error: "Not enough gold" }, { status: 400 });
     }
 
@@ -33,7 +38,7 @@ export async function POST(
         // 1. Deduct Gold
         db.team.update({
             where: { id: teamId },
-            data: { gold: { decrement: item.price } }
+            data: { gold: { decrement: actualPrice } }
         }),
         // 3. Log Transaction
         db.leagueTransaction.create({
@@ -41,8 +46,8 @@ export async function POST(
                 leagueId,
                 teamId,
                 type: "SHOP_PURCHASE",
-                description: `Purchased ${item.name} for ${item.price} Gold`,
-                amount: -item.price
+                description: `Purchased ${item.name} for ${actualPrice} Gold`,
+                amount: -actualPrice
             }
         })
     ];

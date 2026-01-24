@@ -23,6 +23,8 @@ model User {
   // Meta Progression
   commanderLevel Int @default(1)
   experience     Int @default(0)
+  talentPoints   Int @default(0)
+  unlockedTalents String @default("[]") // JSON stringified array of talent codes
 
   leagues       LeagueMember[]
   ownedLeagues  League[]
@@ -178,6 +180,7 @@ model Matchup {
   // Playoff Info
   bracket   String? // winners | losers
   round     String? // wildcard | semifinal | championship | consolation_semi | consolation_final | toilet_bowl
+  simulationLogs String? // JSON encoded array of story events
 
   league   League @relation(fields: [leagueId], references: [id])
   week     Week   @relation(fields: [weekId], references: [id])

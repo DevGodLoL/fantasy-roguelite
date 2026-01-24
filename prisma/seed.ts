@@ -355,7 +355,7 @@ async function main() {
       name: "Infinity Gauntlet",
       description: "Doubles your entire team's score this week. Ultimate power.",
       rarity: "legendary",
-      kind: "multiplier",
+      kind: "points_multiplier",
       value: 2.0,
     },
     {
@@ -363,7 +363,7 @@ async function main() {
       name: "Phoenix Rebirth",
       description: "If you lose this week, gain +50 bonus points. Rise from the ashes.",
       rarity: "legendary",
-      kind: "bonus_points",
+      kind: "points_flat",
       value: 50.0,
     },
 
@@ -374,7 +374,7 @@ async function main() {
       description: "Opponent loses 5 points for every fumble lost.",
       rarity: "epic",
       scope: "opponent",
-      kind: "penalty",
+      kind: "points_flat_penalty",
       value: 5.0,
     },
     {
@@ -383,7 +383,7 @@ async function main() {
       description: "Sacrifice 20 points to reduce opponent's score by 30.",
       rarity: "epic",
       scope: "opponent",
-      kind: "penalty",
+      kind: "points_flat_penalty",
       value: 30.0,
     },
     {
@@ -391,7 +391,7 @@ async function main() {
       name: "Berserker Rage",
       description: "1.25x multiplier on total score. Unleash the fury.",
       rarity: "epic",
-      kind: "multiplier",
+      kind: "points_multiplier",
       value: 1.25,
     },
 
@@ -401,7 +401,7 @@ async function main() {
       name: "Experience Relic",
       description: "Multiply this week's total score by 1.15x.",
       rarity: "rare",
-      kind: "multiplier",
+      kind: "points_multiplier",
       value: 1.15,
     },
     {
@@ -409,7 +409,7 @@ async function main() {
       name: "Aerial Assault",
       description: "1.5x multiplier on passing yards.",
       rarity: "rare",
-      kind: "multiplier",
+      kind: "points_multiplier",
       value: 1.5,
     },
     {
@@ -417,7 +417,7 @@ async function main() {
       name: "Ground Game",
       description: "1.5x multiplier on rushing yards.",
       rarity: "rare",
-      kind: "multiplier",
+      kind: "points_multiplier",
       value: 1.5,
     },
     {
@@ -425,7 +425,7 @@ async function main() {
       name: "Sticky Hands",
       description: "1.5x multiplier on receiving yards.",
       rarity: "rare",
-      kind: "multiplier",
+      kind: "points_multiplier",
       value: 1.5,
     },
     {
@@ -433,7 +433,7 @@ async function main() {
       name: "Touchdown Dance",
       description: "+3 bonus points per touchdown scored by your team.",
       rarity: "rare",
-      kind: "bonus_points",
+      kind: "points_flat",
       value: 3.0,
     },
 
@@ -443,7 +443,7 @@ async function main() {
       name: "Quarterback's Tome",
       description: "Earn +2 points for every Passing TD this week.",
       rarity: "common",
-      kind: "bonus_points",
+      kind: "points_flat",
       value: 2.0,
     },
     {
@@ -451,7 +451,7 @@ async function main() {
       name: "Small Blessing",
       description: "Add 10 bonus points this week.",
       rarity: "common",
-      kind: "bonus_points",
+      kind: "points_flat",
       value: 10.0,
     },
     {
@@ -459,7 +459,7 @@ async function main() {
       name: "Lucky Charm",
       description: "+5 bonus points. A little luck goes a long way.",
       rarity: "common",
-      kind: "bonus_points",
+      kind: "points_flat",
       value: 5.0,
     },
     {
@@ -467,7 +467,7 @@ async function main() {
       name: "Iron Will",
       description: "1.05x multiplier. Consistency is key.",
       rarity: "common",
-      kind: "multiplier",
+      kind: "points_multiplier",
       value: 1.05,
     },
     {
@@ -478,6 +478,30 @@ async function main() {
       kind: "bonus_points",
       value: 40.0,
       isPlayoffOnly: true,
+    },
+    {
+      code: "relic_necromancy",
+      name: "Tome of Necromancy",
+      description: "1.5x multiplier for TEs, but 0.9x for WRs. Dark power has a price.",
+      rarity: "epic",
+      type: "relic",
+      price: 150,
+    },
+    {
+      code: "relic_vampire_fang",
+      name: "Vampire Fang",
+      description: "DST gains +5 bonus points per game. Siphoning essence.",
+      rarity: "rare",
+      type: "relic",
+      price: 100,
+    },
+    {
+      code: "relic_rush_bonus",
+      name: "Boots of Haste",
+      description: "Gain +1 point for every 10 rushing yards. Speed is key.",
+      rarity: "rare",
+      type: "relic",
+      price: 120,
     },
     {
       code: "AEGIS_OF_CHAMPIONS",

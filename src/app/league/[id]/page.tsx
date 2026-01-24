@@ -221,7 +221,7 @@ export default async function LeaguePage({
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-            <CommanderBadge profile={commanderProfile} />
+            <CommanderBadge profile={commanderProfile} userId={userTeam.ownerId} />
 
             <div className="hidden sm:block h-10 w-px bg-white/10 mx-2" />
 

@@ -11,119 +11,30 @@ import {
     generateWeek17Matchups,
     awardPlayoffRewards
 } from "@/lib/game-data/playoffs";
+import { simulateTeamPerformance } from "@/lib/game-logic/simulation";
+import { checkMutations } from "@/lib/game-logic/mutations";
+import { grantCommanderXP } from "@/lib/game-logic/progression";
 
-// --- TRAIT DEFINITIONS ---
-const TRAIT_DEFINITIONS: Record<string, any> = {
-    // Basic Positive
-    HOT_HAND: { code: 'HOT_HAND', name: "Hot Hand", description: "In the zone! +10% Points.", kind: "multiplier", value: 1.1, duration: 1, rarity: "uncommon" },
-    GENIUS: { code: 'GENIUS', name: "Genius", description: "High IQ play. +15% Points.", kind: "multiplier", value: 1.15, duration: 2, rarity: "rare" },
-    CLUTCH: { code: 'CLUTCH', name: "Clutch", description: "Performs under pressure. +5 pts.", kind: "bonus_flat", value: 5.0, duration: 3, rarity: "epic" },
-    LEGENDARY_AURA: { code: 'LEGENDARY_AURA', name: "Legendary Aura", description: "Permanent +2 pts.", kind: "bonus_flat", value: 2.0, duration: null, rarity: "legendary" },
+// --- HELPERS ---
 
-    // Specializations
-    SHADOW_RUNNER: { code: 'SHADOW_RUNNER', name: "Shadow Runner", description: "Unstoppable on the ground. +20% Rushing Points.", kind: "multiplier", value: 1.2, duration: 2, rarity: "rare" },
-    GUNSLINGER: { code: 'GUNSLINGER', name: "Gunslinger", description: "Air raid specialist. +15% Passing Points.", kind: "multiplier", value: 1.15, duration: 2, rarity: "rare" },
-    IRON_LUNG: { code: 'IRON_LUNG', name: "Iron Lung", description: "Never tires. +5% points permanently.", kind: "multiplier", value: 1.05, duration: null, rarity: "epic" },
-
-    // Negative / Curses
-    COLD: { code: 'COLD', name: "Cold Streak", description: "Sluggish. -10% Points.", kind: "multiplier", value: 0.9, duration: 1, rarity: "common" },
-    SHOOK: { code: 'SHOOK', name: "Shook", description: "Confidence shattered. -20% Points.", kind: "multiplier", value: 0.8, duration: 2, rarity: "uncommon" },
-    VULNERABLE: { code: 'VULNERABLE', name: "Vulnerable", description: "Prone to mistakes. -3 pts.", kind: "bonus_flat", value: -3.0, duration: 1, rarity: "common" },
-    BUTTERFINGERS: { code: 'BUTTERFINGERS', name: "Butterfingers", description: "Loves to drop the ball. -5 pts on fumbles.", kind: "bonus_flat", value: -5.0, duration: 3, rarity: "curse" },
-    CURSE_OF_THE_FALLEN: { code: 'CURSE_OF_THE_FALLEN', name: "Curse of the Fallen", description: "Slow decay. -10% points permanently.", kind: "multiplier", value: 0.9, duration: null, rarity: "curse" },
-};
-
-// Check for new mutations based on performance
-function checkMutations(
-    playerId: string,
-    points: number,
-    stats: any,
-    position: string,
-    leagueId: string,
-    currentWeekNumber: number
-) {
-    const mutations = [];
-
-    // 1. POSITIVE SCORE TRIGGERS
-    if (points >= 25) {
-        const roll = Math.random();
-        if (roll < 0.1) mutations.push(TRAIT_DEFINITIONS.GENIUS);
-        else if (roll < 0.4) mutations.push(TRAIT_DEFINITIONS.HOT_HAND);
-    }
-    if (points >= 35) {
-        if (Math.random() < 0.05) mutations.push(TRAIT_DEFINITIONS.LEGENDARY_AURA);
-        else if (Math.random() < 0.2) mutations.push(TRAIT_DEFINITIONS.CLUTCH);
-    }
-
-    // 2. STAT-SPECIFIC TRIGGERS
-    if (position === 'RB' && stats.rushYds >= 100) {
-        if (Math.random() < 0.3) mutations.push(TRAIT_DEFINITIONS.SHADOW_RUNNER);
-    }
-    if (position === 'QB' && stats.passYds >= 300) {
-        if (Math.random() < 0.3) mutations.push(TRAIT_DEFINITIONS.GUNSLINGER);
-    }
-    if (stats.fumbles > 0) {
-        if (Math.random() < 0.4) mutations.push(TRAIT_DEFINITIONS.BUTTERFINGERS);
-    }
-
-    // 3. NEGATIVE SCORE TRIGGERS
-    if (points < 5 && points > -5) {
-        if (Math.random() < 0.25) mutations.push(TRAIT_DEFINITIONS.COLD);
-    }
-    if (points < 0) {
-        mutations.push(TRAIT_DEFINITIONS.SHOOK);
-        if (Math.random() < 0.1) mutations.push(TRAIT_DEFINITIONS.CURSE_OF_THE_FALLEN);
-    }
-
-    // Permanent high performance bonus
-    if (points >= 40 && Math.random() < 0.1) {
-        mutations.push(TRAIT_DEFINITIONS.IRON_LUNG);
-    }
-
-    // Helper to format for DB
-    return mutations.map(def => ({
-        playerId,
-        leagueId,
-        code: def.code,
-        name: def.name,
-        description: def.description,
-        rarity: def.rarity,
-        kind: def.kind,
-        value: def.value,
-        expiresAtWeek: def.duration ? currentWeekNumber + def.duration : null
-    }));
-}
-
-// Rarity weights (cumulative) for Packs
-const RARITY_WEIGHTS = [
-    { type: "common", threshold: 0.7 },
-    { type: "rare", threshold: 0.9 }, // 0.7 + 0.2
-    { type: "epic", threshold: 0.99 }, // 0.9 + 0.09
-    { type: "legendary", threshold: 1.0 }, // 0.99 + 0.01
-];
-
-function selectRarity(): string {
+const selectRarity = (): string => {
     const r = Math.random();
     if (r < 0.7) return "common";
     if (r < 0.9) return "rare";
     if (r < 0.99) return "epic";
     return "legendary";
-}
+};
 
 export async function ensurePackOffers(leagueId: string, teamId: string, weekId: string) {
     if (!leagueId || !teamId || !weekId) return;
 
-    // 1. Check if offers already exist
     const existingOffers = await db.teamPowerupOffer.findMany({
         where: { teamId, weekId },
         include: { powerup: true },
     });
 
-    if (existingOffers.length > 0) {
-        return existingOffers;
-    }
+    if (existingOffers.length > 0) return existingOffers;
 
-    // 2. Fetch all powerups
     const currentWeek = await db.week.findUnique({ where: { id: weekId } });
     const isPlayoffs = currentWeek && currentWeek.number > 14;
 
@@ -131,42 +42,29 @@ export async function ensurePackOffers(leagueId: string, teamId: string, weekId:
         where: isPlayoffs ? {} : { isPlayoffOnly: false }
     });
 
-    // 3. Select 4 distinct powerups
     const selected: typeof allPowerups = [];
     const needed = 4;
 
-    // Safety: if total powerups < needed, just return all of them
     if (allPowerups.length <= needed) {
         selected.push(...allPowerups);
     } else {
-        // Try to pick by rarity
         while (selected.length < needed) {
             const targetRarity = selectRarity();
-
-            // Find candidates of this rarity not yet selected
             const candidates = allPowerups.filter(
                 (p) => p.rarity === targetRarity && !selected.find((s) => s.id === p.id)
             );
 
             if (candidates.length > 0) {
-                const pick = candidates[Math.floor(Math.random() * candidates.length)];
-                selected.push(pick);
+                selected.push(candidates[Math.floor(Math.random() * candidates.length)]);
             } else {
-                // Fallback: Pick any unselected powerup regardless of rarity
-                const anyCandidates = allPowerups.filter(
-                    (p) => !selected.find((s) => s.id === p.id)
-                );
+                const anyCandidates = allPowerups.filter((p) => !selected.find((s) => s.id === p.id));
                 if (anyCandidates.length > 0) {
-                    const pick = anyCandidates[Math.floor(Math.random() * anyCandidates.length)];
-                    selected.push(pick);
-                } else {
-                    break; // No more available
-                }
+                    selected.push(anyCandidates[Math.floor(Math.random() * anyCandidates.length)]);
+                } else break;
             }
         }
     }
 
-    // 4. Create offers
     if (selected.length > 0) {
         await db.teamPowerupOffer.createMany({
             data: selected.map((p) => ({
@@ -178,7 +76,7 @@ export async function ensurePackOffers(leagueId: string, teamId: string, weekId:
         });
     }
 
-    revalidatePath(`/league/${leagueId}/week/${(await db.week.findUnique({ where: { id: weekId } }))?.number}`);
+    revalidatePath(`/league/${leagueId}/week/${currentWeek?.number}`);
     return await db.teamPowerupOffer.findMany({
         where: { teamId, weekId },
         include: { powerup: true },
@@ -192,41 +90,21 @@ export async function selectPowerup(formData: FormData) {
     const leagueId = formData.get("leagueId") as string;
     const weekNumber = formData.get("weekNumber") as string;
 
-    if (!teamId || !powerupId || !weekId) {
-        throw new Error("Missing required fields");
-    }
-
-    // NEW: Check if this powerup is actually offered to this team for this week
     const offer = await db.teamPowerupOffer.findFirst({
-        where: {
-            teamId,
-            weekId,
-            powerupId,
-        },
+        where: { teamId, weekId, powerupId },
     });
 
-    if (!offer) {
-        throw new Error("Invalid powerup selection: Not in your pack!");
-    }
+    if (!offer) throw new Error("Invalid powerup selection");
 
-    // Check if team already has a powerup for this week
     const existing = await db.teamPowerup.findFirst({
         where: { teamId, weekId },
     });
 
-    if (existing) {
-        throw new Error("Team already has a powerup for this week");
-    }
+    if (existing) throw new Error("Already selected a powerup for this week");
 
-    // Transaction: Create TeamPowerup and mark offer as chosen
     await db.$transaction([
         db.teamPowerup.create({
-            data: {
-                teamId,
-                powerupId,
-                weekId,
-                isConsumed: false,
-            },
+            data: { teamId, powerupId, weekId, isConsumed: false },
         }),
         db.teamPowerupOffer.update({
             where: { id: offer.id },
@@ -234,81 +112,42 @@ export async function selectPowerup(formData: FormData) {
         }),
     ]);
 
-    // Revalidate the week page
     revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
 }
 
 export async function rerollOffers(leagueId: string, teamId: string, weekId: string, weekNumber: number) {
-    if (!leagueId || !teamId || !weekId) {
-        return { success: false, error: "Missing required fields" };
-    }
-
-    // Check if team has rerolls available
     const team = await db.team.findUnique({
         where: { id: teamId },
         select: { rerolls: true }
     });
 
-    if (!team || team.rerolls <= 0) {
-        return { success: false, error: "No rerolls available" };
-    }
+    if (!team || team.rerolls <= 0) return { success: false, error: "No rerolls available" };
 
-    // Check if team already selected a powerup this week
-    const existing = await db.teamPowerup.findFirst({
-        where: { teamId, weekId }
-    });
+    const existing = await db.teamPowerup.findFirst({ where: { teamId, weekId } });
+    if (existing) return { success: false, error: "Already selected an artifact" };
 
-    if (existing) {
-        return { success: false, error: "Already selected an artifact this week" };
-    }
+    await db.teamPowerupOffer.deleteMany({ where: { teamId, weekId } });
 
-    // Delete current offers
-    await db.teamPowerupOffer.deleteMany({
-        where: { teamId, weekId }
-    });
-
-    // Generate new offers
     const isPlayoffs = weekNumber > 14;
     const allPowerups = await db.powerup.findMany({
-        where: {
-            type: 'card',
-            isPlayoffOnly: isPlayoffs ? undefined : false
-        }
+        where: { type: 'card', isPlayoffOnly: isPlayoffs ? undefined : false }
     });
-
-    const selectRarity = () => {
-        const r = Math.random();
-        if (r < 0.7) return "common";
-        if (r < 0.9) return "rare";
-        if (r < 0.99) return "epic";
-        return "legendary";
-    };
 
     const selected: typeof allPowerups = [];
     while (selected.length < 4 && selected.length < allPowerups.length) {
         const targetRarity = selectRarity();
-        const candidates = allPowerups.filter(
-            p => p.rarity === targetRarity && !selected.find(s => s.id === p.id)
-        );
+        const candidates = allPowerups.filter(p => p.rarity === targetRarity && !selected.find(s => s.id === p.id));
         if (candidates.length > 0) {
             selected.push(candidates[Math.floor(Math.random() * candidates.length)]);
         } else {
             const any = allPowerups.filter(p => !selected.find(s => s.id === p.id));
-            if (any.length > 0) {
-                selected.push(any[Math.floor(Math.random() * any.length)]);
-            }
+            if (any.length > 0) selected.push(any[Math.floor(Math.random() * any.length)]);
         }
     }
 
-    // Create new offers and decrement rerolls
     await db.$transaction([
         db.teamPowerupOffer.createMany({
-            data: selected.map(p => ({
-                teamId,
-                weekId,
-                powerupId: p.id,
-                isChosen: false
-            }))
+            data: selected.map(p => ({ teamId, weekId, powerupId: p.id, isChosen: false }))
         }),
         db.team.update({
             where: { id: teamId },
@@ -325,81 +164,25 @@ export async function consumePowerup(formData: FormData) {
     const leagueId = formData.get("leagueId") as string;
     const weekNumber = formData.get("weekNumber") as string;
 
-    if (!teamPowerupId) {
-        throw new Error("Missing teamPowerupId");
-    }
-
-    // Mark the powerup as consumed
     await db.teamPowerup.update({
         where: { id: teamPowerupId },
         data: { isConsumed: true },
     });
 
-    // Revalidate the week page
     revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
 }
 
-/**
- * Simulate a week by generating individual player performances and summing them up
- */
-// Helper to generate random player stats based on position
-const generateStats = (pos: string) => {
-    let points = 0;
-    let stats = { passYds: 0, rushYds: 0, recYds: 0, tds: 0, fumbles: 0 };
+// --- CORE SIMULATION ---
 
-    // ... (Stats Logic Same as Before) but reduced boilerplate for readability ...
-    switch (pos) {
-        case "QB":
-            stats.passYds = Math.floor(Math.random() * 250 + 150);
-            stats.rushYds = Math.floor(Math.random() * 40);
-            stats.tds = Math.floor(Math.random() * 3);
-            points = (stats.passYds * 0.04) + (stats.rushYds * 0.1) + (stats.tds * 4);
-            break;
-        case "RB":
-            stats.rushYds = Math.floor(Math.random() * 100 + 40);
-            stats.recYds = Math.floor(Math.random() * 30);
-            stats.tds = Math.floor(Math.random() * 2);
-            points = (stats.rushYds * 0.1) + (stats.recYds * 0.1) + (stats.tds * 6);
-            break;
-        case "WR":
-            stats.recYds = Math.floor(Math.random() * 110 + 30);
-            stats.tds = Math.floor(Math.random() * 2);
-            points = (stats.recYds * 0.1) + (stats.tds * 6);
-            break;
-        case "TE":
-            stats.recYds = Math.floor(Math.random() * 70 + 10);
-            stats.tds = Math.random() > 0.7 ? 1 : 0;
-            points = (stats.recYds * 0.1) + (stats.tds * 6);
-            break;
-        default:
-            points = Math.random() * 15 + 5;
-    }
-
-    if (Math.random() < 0.05) {
-        stats.fumbles = 1;
-        points -= 2;
-    }
-
-    return { points: parseFloat(points.toFixed(2)), stats };
-};
-
-/**
- * Simulate a week by generating individual player performances and summing them up
- */
 export async function simulateWeek(leagueId: string, weekNumber: number) {
     try {
-        console.log(`Starting simulation for league ${leagueId} week ${weekNumber}`);
+        console.log(`[SimulateWeek] League: ${leagueId}, Week: ${weekNumber}`);
 
-        // 1. Get Week ID
         const weekRef = await db.week.findUnique({
             where: { leagueId_number: { leagueId, number: weekNumber } },
         });
-
         if (!weekRef) throw new Error("Week not found");
 
-        const transactions = [];
-
-        // 2. Fetch full data including TRAITS
         const week = await db.week.findUnique({
             where: { id: weekRef.id },
             include: {
@@ -407,58 +190,16 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
                     include: {
                         homeTeam: {
                             include: {
-                                rosterSlots: {
-                                    include: {
-                                        player: {
-                                            include: {
-                                                traits: {
-                                                    where: {
-                                                        leagueId,
-                                                        OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gt: weekNumber } }]
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                },
-                                powerups: {
-                                    where: {
-                                        OR: [
-                                            { weekId: weekRef.id },
-                                            { weekId: null }
-                                        ],
-                                        isConsumed: false
-                                    },
-                                    include: { powerup: true }
-                                }
+                                owner: { select: { id: true, unlockedTalents: true, experience: true, commanderLevel: true, talentPoints: true } },
+                                rosterSlots: { include: { player: { include: { traits: { where: { leagueId, OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gt: weekNumber } }] } } } } } },
+                                powerups: { where: { OR: [{ weekId: weekRef.id }, { weekId: null }], isConsumed: false }, include: { powerup: true } }
                             },
                         },
                         awayTeam: {
                             include: {
-                                rosterSlots: {
-                                    include: {
-                                        player: {
-                                            include: {
-                                                traits: {
-                                                    where: {
-                                                        leagueId,
-                                                        OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gte: weekNumber } }]
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                },
-                                powerups: {
-                                    where: {
-                                        OR: [
-                                            { weekId: weekRef.id },
-                                            { weekId: null }
-                                        ],
-                                        isConsumed: false
-                                    },
-                                    include: { powerup: true }
-                                }
+                                owner: { select: { id: true, unlockedTalents: true, experience: true, commanderLevel: true, talentPoints: true } },
+                                rosterSlots: { include: { player: { include: { traits: { where: { leagueId, OR: [{ expiresAtWeek: null }, { expiresAtWeek: { gt: weekNumber } }] } } } } } },
+                                powerups: { where: { OR: [{ weekId: weekRef.id }, { weekId: null }], isConsumed: false }, include: { powerup: true } }
                             },
                         },
                     },
@@ -466,430 +207,212 @@ export async function simulateWeek(leagueId: string, weekNumber: number) {
             },
         });
 
-        if (!week) throw new Error("Week data load failed");
+        if (!week) throw new Error("Data load failed");
 
-        // Helper to process a team's performance
-        const processTeam = (team: any) => {
-            let total = 0;
-            let fumbles = 0;
-            const positionScores: Record<string, number> = {};
-            let highestPlayerScore = 0;
-            const archetype = team.archetype; // Already on team object from DB
-
-            for (const slot of team.rosterSlots) {
-                if (slot.player) {
-                    const { points: rawPoints, stats } = generateStats(slot.player.position);
-                    let finalPoints = rawPoints;
-
-                    // AI ARCHETYPE INFLUENCE (Player Level)
-                    if (archetype === 'CONSERVATIVE' && stats.fumbles > 0) {
-                        // Sentinel: Reduces damage from fumbles (only -1 instead of -2)
-                        finalPoints += 1;
-                    }
-                    if (archetype === 'AGGRESSIVE') {
-                        // Warlord: Higher ceiling (+5%), but fumbles are disastrous (-2 extra)
-                        finalPoints *= 1.05;
-                        if (stats.fumbles > 0) finalPoints -= 2;
-                    }
-
-                    // Apply ACTIVE TRAITS
-                    if (slot.player.traits && slot.player.traits.length > 0) {
-                        for (const trait of slot.player.traits) {
-                            if (trait.kind === 'multiplier') finalPoints *= trait.value;
-                            if (trait.kind === 'bonus_flat') finalPoints += trait.value;
-                        }
-                    }
-
-                    if (slot.slotType !== "BENCH") {
-                        // --- RELIC LOGIC ---
-                        // Injecting Relic effects before adding to total
-                        const activeRelics = team.powerups.filter((tp: any) => tp.powerup.type === 'relic' && !tp.isConsumed);
-
-                        for (const tp of activeRelics) {
-                            const code = tp.powerup.code;
-
-                            // 1. Boots of Haste (+1 pt per 10 Rush Yards)
-                            if (code === 'relic_rush_bonus') {
-                                // Since generateStats returned stats object
-                                if (stats.rushYds > 0) {
-                                    finalPoints += Math.floor(stats.rushYds / 10);
-                                }
-                            }
-
-                            // 2. Necromancer's Cowl (TE x2, WR x0.5)
-                            if (code === 'relic_necromancy') {
-                                if (slot.player.position === 'TE') {
-                                    finalPoints *= 2;
-                                } else if (slot.player.position === 'WR') {
-                                    finalPoints *= 0.5;
-                                }
-                            }
-                        }
-
-                        total += finalPoints;
-
-                        // Track position scores for missions
-                        const pos = slot.player.position;
-                        positionScores[pos] = (positionScores[pos] || 0) + finalPoints;
-
-                        // Track highest player score
-                        if (finalPoints > highestPlayerScore) {
-                            highestPlayerScore = finalPoints;
-                        }
-                    }
-                    fumbles += stats.fumbles;
-
-                    // Log Performance
-                    transactions.push(
-                        db.playerPerformance.upsert({
-                            where: { playerId_weekId: { playerId: slot.player.id, weekId: week.id } },
-                            create: { playerId: slot.player.id, weekId: week.id, points: finalPoints, ...stats },
-                            update: { points: finalPoints, ...stats },
-                        })
-                    );
-
-                    // Check for NEW MUTATIONS
-                    const newMutations = checkMutations(
-                        slot.player.id,
-                        finalPoints,
-                        stats,
-                        slot.player.position,
-                        leagueId,
-                        weekNumber
-                    );
-                    for (const m of newMutations) {
-                        transactions.push(
-                            db.playerTrait.create({ data: m })
-                        );
-                        // Notify League Log
-                        transactions.push(
-                            db.leagueTransaction.create({
-                                data: {
-                                    leagueId,
-                                    teamId: team.id,
-                                    playerId: slot.player.id,
-                                    type: "TRAIT_GAINED", // Custom type
-                                    description: `${slot.player.name} gained trait: ${m.name} (${m.description})`
-                                }
-                            })
-                        );
-                    }
-                }
-            }
-            return { total, fumbles, positionScores, highestPlayerScore };
-        };
+        const transactions: any[] = [];
+        const battleResults: BattleResults[] = [];
 
         for (const matchup of week.matchups) {
-            console.log(`Processing matchup ${matchup.id}`);
+            // Prepare with Talent Data
+            const homeTeamSim = {
+                ...(matchup.homeTeam as any),
+                commanderTalents: JSON.parse((matchup.homeTeam.owner as any).unlockedTalents || "[]")
+            };
+            const awayTeamSim = {
+                ...(matchup.awayTeam as any),
+                commanderTalents: JSON.parse((matchup.awayTeam.owner as any).unlockedTalents || "[]")
+            };
 
-            const home = processTeam(matchup.homeTeam);
-            const away = processTeam(matchup.awayTeam);
+            // Run Core Engine
+            const homeRes = await simulateTeamPerformance(homeTeamSim, awayTeamSim, weekNumber);
+            const awayRes = await simulateTeamPerformance(awayTeamSim, homeTeamSim, weekNumber);
 
-            let homeTotal = home.total;
-            let awayTotal = away.total;
-            let homeFumbles = home.fumbles;
-            let awayFumbles = away.fumbles;
+            // Combine logs for the Matchup Chronicle
+            const combinedLogs = [
+                ...homeRes.log.map(msg => `[${matchup.homeTeam.name}] ${msg}`),
+                ...awayRes.log.map(msg => `[${matchup.awayTeam.name}] ${msg}`)
+            ];
 
-            // --- AI STRATEGIC MODIFIERS ---
-            const homeArchetype = matchup.homeTeam.archetype;
-            const awayArchetype = matchup.awayTeam.archetype;
+            // Persist Player Stats & Check Mutations
+            const processPerfs = (team: any, res: any) => {
+                for (const playerId in res.playerPerformances) {
+                    const p = res.playerPerformances[playerId];
+                    transactions.push(db.playerPerformance.upsert({
+                        where: { playerId_weekId: { playerId, weekId: week.id } },
+                        create: { playerId, weekId: week.id, points: p.points, ...p.stats },
+                        update: { points: p.points, ...p.stats },
+                    }));
 
-            let homeMultiplier = 1.0;
-            let homeBonus = 0;
-            let awayMultiplier = 1.0;
-            let awayBonus = 0;
-
-            // MASTERMIND: Calculated precision (+3 pts flat)
-            if (homeArchetype === 'MASTERMIND') homeBonus += 3;
-            if (awayArchetype === 'MASTERMIND') awayBonus += 3;
-
-            // CHAOTIC: Random entropy (+/- 10%)
-            if (homeArchetype === 'CHAOTIC') homeMultiplier *= (0.9 + Math.random() * 0.2);
-            if (awayArchetype === 'CHAOTIC') awayMultiplier *= (0.9 + Math.random() * 0.2);
-
-            // HOARDER: Passive Relic Focus (+1 pt per artifact)
-            if (homeArchetype === 'HOARDER') homeBonus += matchup.homeTeam.powerups.length;
-            if (awayArchetype === 'HOARDER') awayBonus += matchup.awayTeam.powerups.length;
-
-            // GREEDY: Sacrifice power for wealth (-5 pts)
-            if (homeArchetype === 'GREEDY') homeBonus -= 5;
-            if (awayArchetype === 'GREEDY') awayBonus -= 5;
-
-            // --- POWERUP LOGIC (Team Level) ---
-            // Apply Home Powerups
-            for (const tp of matchup.homeTeam.powerups) {
-                const p = tp.powerup;
-                if (p.scope === "self") {
-                    if (p.kind === "multiplier" && p.value) homeMultiplier *= p.value;
-                    if (p.kind === "bonus_points" && p.value) homeBonus += p.value;
-                } else if (p.scope === "opponent") {
-                    if (p.kind === "penalty" && p.value && p.code !== "CURSE_OF_THE_FUMBLE") {
-                        awayBonus -= p.value; // Generic penalty
-                    }
-                    if (p.code === "CURSE_OF_THE_FUMBLE" && p.value) {
-                        awayBonus -= (awayFumbles * p.value);
-                    }
-                }
-                transactions.push(db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } }));
-            }
-
-            // Apply Away Powerups
-            for (const tp of matchup.awayTeam.powerups) {
-                const p = tp.powerup;
-                // Skip RELICS here, they are handled in processTeam or below
-                if (p.type === 'relic') continue;
-
-                if (p.scope === "self") {
-                    if (p.kind === "multiplier" && p.value) awayMultiplier *= p.value;
-                    if (p.kind === "bonus_points" && p.value) awayBonus += p.value;
-                } else if (p.scope === "opponent") {
-                    if (p.kind === "penalty" && p.value && p.code !== "CURSE_OF_THE_FUMBLE") {
-                        homeBonus -= p.value;
-                    }
-                    if (p.code === "CURSE_OF_THE_FUMBLE" && p.value) {
-                        homeBonus -= (homeFumbles * p.value);
-                    }
-                }
-                transactions.push(db.teamPowerup.update({ where: { id: tp.id }, data: { isConsumed: true } }));
-            }
-
-            // Calculate Final Scores
-            homeTotal = (homeTotal * homeMultiplier) + homeBonus;
-            awayTotal = (awayTotal * awayMultiplier) + awayBonus;
-
-            // Determine Winner & Gold Logic
-            let homeGold = 0;
-            let awayGold = 0;
-            const WIN_GOLD = 100;
-            const LOSS_BASE_GOLD = 50;
-            // Note: complex streak logic omitted for MVP stability, using flat loss bonus for now
-            const LOSS_BONUS = 25;
-
-            if (homeTotal > awayTotal) {
-                homeGold = WIN_GOLD;
-                awayGold = LOSS_BASE_GOLD + LOSS_BONUS; // Pity gold
-            } else if (awayTotal > homeTotal) {
-                awayGold = WIN_GOLD;
-                homeGold = LOSS_BASE_GOLD + LOSS_BONUS;
-            } else {
-                homeGold = 75;
-                awayGold = 75;
-            }
-
-            // GREEDY: Extra wealth (+25g)
-            if (homeArchetype === 'GREEDY') homeGold += 25;
-            if (awayArchetype === 'GREEDY') awayGold += 25;
-
-            // Update Matchup
-            await db.matchup.update({
-                where: { id: matchup.id },
-                data: {
-                    homeScore: parseFloat(Math.max(0, homeTotal).toFixed(2)),
-                    awayScore: parseFloat(Math.max(0, awayTotal).toFixed(2)),
-                    status: "final",
-                },
-            });
-
-            // Grant Gold
-            transactions.push(
-                db.team.update({
-                    where: { id: matchup.homeTeamId },
-                    data: { gold: { increment: homeGold } }
-                }),
-                db.team.update({
-                    where: { id: matchup.awayTeamId },
-                    data: { gold: { increment: awayGold } }
-                })
-            );
-
-            // --- MISSION EVALUATION ---
-            // Process missions for both teams
-            const evaluateTeamMissions = async (teamId: string, results: BattleResults) => {
-                const missions = await db.teamMission.findMany({
-                    where: { teamId, weekId: week.id, isCompleted: false }
-                });
-
-                for (const mission of missions) {
-                    const { progress, isCompleted } = calculateMissionProgress(
-                        {
-                            code: mission.code,
-                            name: mission.name,
-                            description: mission.description,
-                            type: mission.type as any,
-                            targetPosition: mission.targetPosition || undefined,
-                            targetValue: mission.targetValue,
-                            rewardType: mission.rewardType as any,
-                            rewardValue: mission.rewardValue,
-                            difficulty: 'medium' as any // Not used in calculation
-                        },
-                        results
-                    );
-
-                    // Update mission progress
-                    transactions.push(
-                        db.teamMission.update({
-                            where: { id: mission.id },
-                            data: {
-                                progress,
-                                isCompleted
-                            }
-                        })
-                    );
-
-                    // Grant rewards if completed
-                    if (isCompleted) {
-                        if (mission.rewardType === 'gold') {
-                            transactions.push(
-                                db.team.update({
-                                    where: { id: teamId },
-                                    data: { gold: { increment: mission.rewardValue } }
-                                })
-                            );
-                        } else if (mission.rewardType === 'rerolls') {
-                            transactions.push(
-                                db.team.update({
-                                    where: { id: teamId },
-                                    data: { rerolls: { increment: mission.rewardValue } }
-                                })
-                            );
-                        }
-
-                        // Log the mission completion
-                        transactions.push(
-                            db.leagueTransaction.create({
-                                data: {
-                                    leagueId,
-                                    teamId,
-                                    type: "MISSION_COMPLETE",
-                                    description: `Completed mission: ${mission.name} - Earned ${mission.rewardValue} ${mission.rewardType}`
-                                }
-                            })
-                        );
+                    const teamTalents = JSON.parse((team.owner as any).unlockedTalents || "[]");
+                    const mutations = checkMutations(playerId, p.points, p.stats, team.rosterSlots.find((s: any) => s.playerId === playerId)?.player.position, leagueId, weekNumber, team.archetype, teamTalents);
+                    for (const m of mutations) {
+                        transactions.push(db.playerTrait.create({ data: m }));
+                        transactions.push(db.leagueTransaction.create({
+                            data: { leagueId, teamId: team.id, playerId, type: "TRAIT_GAINED", description: `${team.rosterSlots.find((s: any) => s.playerId === playerId)?.player.name} gained ${m.name}` }
+                        }));
                     }
                 }
             };
 
-            // Evaluate missions for home team
-            await evaluateTeamMissions(matchup.homeTeamId, {
-                totalScore: homeTotal,
-                opponentScore: awayTotal,
-                positionScores: home.positionScores,
-                highestPlayerScore: home.highestPlayerScore
-            });
+            processPerfs(matchup.homeTeam, homeRes);
+            processPerfs(matchup.awayTeam, awayRes);
 
-            // Evaluate missions for away team
-            await evaluateTeamMissions(matchup.awayTeamId, {
-                totalScore: awayTotal,
-                opponentScore: homeTotal,
-                positionScores: away.positionScores,
-                highestPlayerScore: away.highestPlayerScore
+            // ... inside simulateWeek ...
+
+            // Matchup Result
+            const homeWon = homeRes.score > awayRes.score;
+            transactions.push(db.matchup.update({
+                where: { id: matchup.id },
+                data: {
+                    homeScore: homeRes.score,
+                    awayScore: awayRes.score,
+                    status: "final",
+                    simulationLogs: JSON.stringify(combinedLogs)
+                }
+            }));
+
+            // Team Updates (Gold) & Commander XP
+            const finalizeTeam = async (team: any, won: boolean, res: any) => {
+                const gold = Math.floor((won ? 50 : 20) * res.goldMultiplier) + res.bonusGold;
+                transactions.push(db.team.update({
+                    where: { id: team.id },
+                    data: { gold: { increment: gold } }
+                }));
+
+                // Grant Commander XP to the user
+                const xpAmount = 10 + (won ? 20 : 0);
+                const talents = JSON.parse((team.owner as any).unlockedTalents || "[]") as string[];
+                let rewardAmount = xpAmount;
+                if (talents.includes('SCHOLAR')) {
+                    rewardAmount = Math.ceil(xpAmount * 1.05);
+                    combinedLogs.push(`[${team.name}] [Talent: Scholar] +5% XP gained`);
+                }
+
+                let newXP = team.owner.experience + rewardAmount;
+                let newLevel = team.owner.commanderLevel;
+                let newTalentPoints = team.owner.talentPoints;
+
+                while (newXP >= 1000) { // LEVEL_CURVE
+                    newXP -= 1000;
+                    newLevel++;
+                    newTalentPoints++;
+                    combinedLogs.push(`[${team.name}] COMMANDER LEVEL UP! Reached Level ${newLevel}`);
+                }
+
+                transactions.push(db.user.update({
+                    where: { id: team.ownerId },
+                    data: {
+                        experience: newXP,
+                        commanderLevel: newLevel,
+                        talentPoints: newTalentPoints
+                    }
+                }));
+
+                // Expire used consumables
+                transactions.push(db.teamPowerup.updateMany({
+                    where: { teamId: team.id, weekId: week.id, powerup: { type: 'card' } },
+                    data: { isConsumed: true }
+                }));
+            };
+
+            await finalizeTeam(matchup.homeTeam, homeWon, homeRes);
+            await finalizeTeam(matchup.awayTeam, !homeWon, awayRes);
+
+            // Collect results for Mission Eval
+            battleResults.push({
+                totalScore: homeRes.score,
+                opponentScore: awayRes.score,
+                positionScores: homeRes.positionScores,
+                highestPlayerScore: homeRes.highestPlayerScore
             });
+            // We need to keep track of which team got which results for mission eval
+            // so let's use a temporary map or array.
+            (battleResults as any)[battleResults.length - 1].teamId = matchup.homeTeamId;
+
+            battleResults.push({
+                totalScore: awayRes.score,
+                opponentScore: homeRes.score,
+                positionScores: awayRes.positionScores,
+                highestPlayerScore: awayRes.highestPlayerScore
+            });
+            (battleResults as any)[battleResults.length - 1].teamId = matchup.awayTeamId;
         }
 
-        console.log(`Executing ${transactions.length} transactions`);
-        console.log(`Executing ${transactions.length} transactions`);
-        if (transactions.length === 0) {
-            return { success: false, error: "No transactions generated. Matchup count: " + week.matchups.length };
+        // Mission Evaluation
+        const missions = await db.teamMission.findMany({
+            where: { team: { leagueId }, isCompleted: false }
+        });
+        for (const tm of missions) {
+            const res = battleResults.find((r: any) => r.teamId === tm.teamId);
+            if (res) {
+                // Construct a mission-like object for the evaluator from the embedded fields
+                const missionDef = {
+                    type: tm.type as any,
+                    targetPosition: tm.targetPosition,
+                    targetValue: tm.targetValue
+                };
+                const { progress, isCompleted } = calculateMissionProgress(missionDef as any, res as any);
+                if (isCompleted) {
+                    transactions.push(db.teamMission.update({ where: { id: tm.id }, data: { isCompleted: true, progress: 100 } }));
+                    if (tm.rewardType === 'gold') {
+                        transactions.push(db.team.update({ where: { id: tm.teamId }, data: { gold: { increment: tm.rewardValue } } }));
+                    } else if (tm.rewardType === 'rerolls') {
+                        transactions.push(db.team.update({ where: { id: tm.teamId }, data: { rerolls: { increment: tm.rewardValue } } }));
+                    }
+                } else if (progress > tm.progress) {
+                    transactions.push(db.teamMission.update({ where: { id: tm.id }, data: { progress } }));
+                }
+            }
         }
+
         await db.$transaction(transactions);
 
-        // --- PLAYOFF PROGRESSION ---
-        try {
-            if (weekNumber === 14) {
-                console.log("Season end reached. Generating playoffs...");
-                await calculatePlayoffSeedings(leagueId);
-                await initializePlayoffWeeks(leagueId);
-                await generateWeek15Matchups(leagueId);
-            } else if (weekNumber === 15) {
-                console.log("Wildcard round complete. Generating semifinals...");
-                await generateWeek16Matchups(leagueId);
-            } else if (weekNumber === 16) {
-                console.log("Semifinals complete. Generating championship...");
-                await generateWeek17Matchups(leagueId);
-            } else if (weekNumber === 17) {
-                console.log("Season finale complete. Awarding prizes...");
-                await awardPlayoffRewards(leagueId);
-            }
-        } catch (playoffErr) {
-            console.error("Failed to progress playoffs:", playoffErr);
-            // Don't fail the whole simulation if playoff generation fails, 
-            // but we should probably log it.
+        // Playoff Logic
+        if (weekNumber === 14) {
+            await calculatePlayoffSeedings(leagueId);
+            await initializePlayoffWeeks(leagueId);
+            await generateWeek15Matchups(leagueId);
+        } else if (weekNumber === 15) await generateWeek16Matchups(leagueId);
+        else if (weekNumber === 16) await generateWeek17Matchups(leagueId);
+        else if (weekNumber === 17) await awardPlayoffRewards(leagueId);
+
+        // Advance Week - We don't have a currentWeek field on League, 
+        // the state is derived from matchups. We might want to update seasonStatus though.
+        if (weekNumber === 17) {
+            await db.league.update({
+                where: { id: leagueId },
+                data: { seasonStatus: "complete" },
+            });
         }
 
-        revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
-        revalidatePath(`/league/${leagueId}/schedule`);
-        // Revalidate Logs
-        revalidatePath(`/league/${leagueId}/transactions`);
-        revalidatePath(`/league/${leagueId}/admin`);
-
-        return { success: true, matchupsProcessed: week.matchups.length };
+        revalidatePath(`/league/${leagueId}`);
+        return { success: true };
     } catch (e: any) {
-        console.error("Simulation failed:", e);
-        return { success: false, error: e.message || "Unknown error" };
+        console.error("[SimulateWeek] Error:", e);
+        return { success: false, error: e.message || "Temporal anomaly detected" };
     }
 }
 
-// ... (Rest of file: advanceToNextWeek, swapLineupSlots unchanged)
 export async function advanceToNextWeek(leagueId: string, currentWeekNumber: number) {
     const nextWeek = await db.week.findUnique({
         where: { leagueId_number: { leagueId, number: currentWeekNumber + 1 } },
     });
-
-    if (!nextWeek) {
-        throw new Error("No more weeks in the season");
-    }
-
+    if (!nextWeek) throw new Error("No more weeks");
     revalidatePath(`/league/${leagueId}/week/${currentWeekNumber + 1}`);
     return { success: true, nextWeekNumber: currentWeekNumber + 1 };
 }
 
-export async function swapLineupSlots(
-    leagueId: string,
-    weekNumber: number,
-    fromSlotId: string,
-    toSlotId: string
-) {
-    // Fetch slots with player details to verify positions
+export async function swapLineupSlots(leagueId: string, weekNumber: number, fromSlotId: string, toSlotId: string) {
     const [fromSlot, toSlot] = await Promise.all([
-        db.rosterSlot.findUnique({ where: { id: fromSlotId }, include: { player: true } }),
-        db.rosterSlot.findUnique({ where: { id: toSlotId }, include: { player: true } }),
+        db.rosterSlot.findUnique({ where: { id: fromSlotId } }),
+        db.rosterSlot.findUnique({ where: { id: toSlotId } }),
     ]);
 
-    if (!fromSlot || !toSlot) {
-        throw new Error("One or both slots not found");
-    }
+    if (!fromSlot || !toSlot || fromSlot.teamId !== toSlot.teamId) throw new Error("Invalid swap");
 
-    // Ensure they belong to the same team
-    if (fromSlot.teamId !== toSlot.teamId) {
-        throw new Error("Cannot swap players between different teams");
-    }
-
-    // HELPER: Check if player fits in slot
-    const canFit = (player: { position: string } | null, slotType: string) => {
-        if (!player) return true;
-        if (slotType === "BENCH") return true;
-        if (slotType === "FLEX") return ["RB", "WR", "TE"].includes(player.position);
-        return slotType === player.position;
-    };
-
-    // Validate Move
-    if (!canFit(fromSlot.player, toSlot.slotType)) {
-        throw new Error(`Cannot move ${fromSlot.player?.name} (${fromSlot.player?.position}) to ${toSlot.slotType} slot.`);
-    }
-    if (!canFit(toSlot.player, fromSlot.slotType)) {
-        throw new Error(`Cannot move ${toSlot.player?.name} (${toSlot.player?.position}) to ${fromSlot.slotType} slot.`);
-    }
-
-    // Perform the swap
     await db.$transaction([
-        db.rosterSlot.update({
-            where: { id: fromSlotId },
-            data: { playerId: toSlot.playerId },
-        }),
-        db.rosterSlot.update({
-            where: { id: toSlotId },
-            data: { playerId: fromSlot.playerId },
-        }),
+        db.rosterSlot.update({ where: { id: fromSlotId }, data: { playerId: toSlot.playerId } }),
+        db.rosterSlot.update({ where: { id: toSlotId }, data: { playerId: fromSlot.playerId } }),
     ]);
 
     revalidatePath(`/league/${leagueId}/week/${weekNumber}`);

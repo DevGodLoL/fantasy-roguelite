@@ -71,7 +71,8 @@ export async function GET(
                 awayTeam: m.awayTeam.name,
                 homeScore: m.homeScore,
                 awayScore: m.awayScore,
-                winner: m.homeScore > m.awayScore ? m.homeTeam.name : (m.awayScore > m.homeScore ? m.awayTeam.name : "Tie")
+                winner: m.homeScore > m.awayScore ? m.homeTeam.name : (m.awayScore > m.homeScore ? m.awayTeam.name : "Tie"),
+                logs: m.simulationLogs ? JSON.parse(m.simulationLogs) : []
             });
         }
 

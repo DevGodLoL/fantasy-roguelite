@@ -12,11 +12,14 @@ export default async function ShopPage({
     // Fetch Shop Data
     const league = await db.league.findUnique({
         where: { id },
-        include: { teams: true }
+        include: { teams: { include: { owner: true } } }
     });
 
-    // Assume user is 'The DevGods' for demo, or first team
     const userTeam = league?.teams.find(t => t.name === "The DevGods") || league?.teams[0];
+
+    // T2: Haggler talent (5% discount)
+    const talents = JSON.parse((userTeam?.owner as any)?.unlockedTalents || "[]") as string[];
+    const discountFactor = talents.includes('HAGGLER') ? 0.95 : 1.0;
 
     // Debug log if needed (server-side)
     if (!userTeam && league?.teams) {
@@ -108,7 +111,7 @@ export default async function ShopPage({
                     {relics.map(relic => (
                         <RelicCard
                             key={relic.id}
-                            relic={{ ...relic, icon: "🏺" }} // Add icon logic mapping here if desired
+                            relic={{ ...relic, price: Math.floor(relic.price * discountFactor), icon: "🏺" }}
                             userParams={{
                                 gold: userTeam.gold,
                                 teamId: userTeam.id,
@@ -137,7 +140,8 @@ export default async function ShopPage({
                                     key={item.id}
                                     relic={{
                                         ...item,
-                                        icon: item.kind === 'reroll_add' ? "📜" : "🧪" // Simple icon logic
+                                        price: Math.floor(item.price * discountFactor),
+                                        icon: item.kind === 'reroll_add' ? "📜" : "🧪"
                                     }}
                                     userParams={{
                                         gold: userTeam.gold,
