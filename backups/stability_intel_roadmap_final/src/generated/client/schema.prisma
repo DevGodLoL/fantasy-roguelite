@@ -1,0 +1,414 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// --- MODELS START HERE ---
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Meta Progression
+  commanderLevel  Int    @default(1)
+  experience      Int    @default(0)
+  talentPoints    Int    @default(0)
+  unlockedTalents String @default("[]") // JSON stringified array of talent codes
+
+  leagues      LeagueMember[]
+  ownedLeagues League[]
+  teams        Team[]
+}
+
+model League {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Playoff Settings
+  playoffTeams        Int     @default(6)
+  regularSeasonWeeks  Int     @default(14)
+  seasonStatus        String  @default("regular") // regular | playoffs | complete
+  championTeamId      String?
+  consolationWinnerId String?
+
+  owner        User                @relation(fields: [ownerId], references: [id])
+  members      LeagueMember[]
+  teams        Team[]
+  settings     LeagueSettings?
+  weeks        Week[]
+  draft        Draft?
+  matchups     Matchup[]
+  playerTraits PlayerTrait[]
+  transactions LeagueTransaction[]
+}
+
+model LeagueMember {
+  id       String @id @default(cuid())
+  leagueId String
+  userId   String
+  role     String @default("member") // owner | member
+
+  league League @relation(fields: [leagueId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([leagueId, userId])
+}
+
+model LeagueSettings {
+  id       String @id @default(cuid())
+  leagueId String @unique
+
+  // roster layout (simple v1)
+  rosterQB    Int @default(1)
+  rosterRB    Int @default(2)
+  rosterWR    Int @default(2)
+  rosterTE    Int @default(1)
+  rosterFlex  Int @default(1)
+  rosterK     Int @default(1)
+  rosterDST   Int @default(1)
+  rosterBench Int @default(5)
+
+  // Scoring
+  passTdPoints      Int   @default(4)
+  passYardPoints    Float @default(0.04)
+  rushTdPoints      Int   @default(6)
+  rushYardPoints    Float @default(0.1)
+  receivingTdPoints Int   @default(6)
+  receptionPoints   Float @default(1) // PPR
+  fumbleLostPoints  Int   @default(-2)
+
+  league League @relation(fields: [leagueId], references: [id])
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  leagueId  String
+  ownerId   String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Playoff/Rewards Stats
+  playoffSeed            Int?
+  nextSeasonBonusGold    Int     @default(0)
+  nextSeasonBonusRerolls Int     @default(0)
+  rewardsClaimed         Boolean @default(false)
+
+  league         League              @relation(fields: [leagueId], references: [id])
+  owner          User                @relation(fields: [ownerId], references: [id])
+  rosterSlots    RosterSlot[]
+  homeMatchups   Matchup[]           @relation("HomeTeam")
+  awayMatchups   Matchup[]           @relation("AwayTeam")
+  powerups       TeamPowerup[]
+  powerupOffers  TeamPowerupOffer[]
+  weekStats      TeamWeekStats[]
+  draftPicks     DraftPick[]
+  waiverPriority Int                 @default(1)
+  faabBalance    Int                 @default(100)
+  gold           Int                 @default(100)
+  rerolls        Int                 @default(1) // Reroll tokens for pack opening
+  archetype      String              @default("BALANCED") // AGGRESSIVE | CONSERVATIVE | MASTERMIND | GREEDY | HOARDER | CHAOTIC
+  waiverClaims   WaiverClaim[]
+  transactions   LeagueTransaction[]
+  missions       TeamMission[]
+  titles         TeamTitle[]
+
+  @@unique([leagueId, ownerId])
+}
+
+model Week {
+  id        String   @id @default(cuid())
+  leagueId  String
+  number    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Week Type
+  type String @default("regular") // regular | wildcard | semifinal | championship | consolation
+
+  league        League              @relation(fields: [leagueId], references: [id])
+  matchups      Matchup[]
+  powerups      TeamPowerup[]
+  powerupOffers TeamPowerupOffer[]
+  teamStats     TeamWeekStats[]
+  performances  PlayerPerformance[]
+  missions      TeamMission[]
+
+  @@unique([leagueId, number])
+}
+
+model TeamWeekStats {
+  id      String @id @default(cuid())
+  teamId  String
+  weekId  String
+  passYds Int    @default(0)
+  rushYds Int    @default(0)
+  recYds  Int    @default(0)
+
+  team Team @relation(fields: [teamId], references: [id])
+  week Week @relation(fields: [weekId], references: [id])
+
+  @@unique([teamId, weekId])
+}
+
+model Matchup {
+  id       String @id @default(cuid())
+  leagueId String
+  weekId   String
+
+  homeTeamId String
+  awayTeamId String
+
+  homeScore Float  @default(0)
+  awayScore Float  @default(0)
+  status    String @default("scheduled") // scheduled | live | final
+
+  // Playoff Info
+  bracket        String? // winners | losers
+  round          String? // wildcard | semifinal | championship | consolation_semi | consolation_final | toilet_bowl
+  simulationLogs String? // JSON encoded array of story events
+
+  league   League @relation(fields: [leagueId], references: [id])
+  week     Week   @relation(fields: [weekId], references: [id])
+  homeTeam Team   @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam Team   @relation("AwayTeam", fields: [awayTeamId], references: [id])
+
+  @@unique([weekId, homeTeamId])
+  @@unique([weekId, awayTeamId])
+}
+
+model Player {
+  id          String  @id @default(cuid())
+  nflPlayerId String  @unique
+  name        String
+  position    String // QB/RB/WR/TE/DST/K
+  teamAbbr    String?
+  adp         Float   @default(999) // Average Draft Position for rankings
+
+  rosterSlots        RosterSlot[]
+  draftPicks         DraftPick[]
+  waiverClaims       WaiverClaim[]       @relation("PlayerToAdd")
+  dropClaims         WaiverClaim[]       @relation("PlayerToDrop")
+  performances       PlayerPerformance[]
+  traits             PlayerTrait[]
+  leagueTransactions LeagueTransaction[]
+}
+
+model PlayerTrait {
+  id            String @id @default(cuid())
+  playerId      String
+  leagueId      String
+  code          String
+  name          String
+  description   String
+  rarity        String @default("common") // common, rare, epic, legendary, curse
+  kind          String // multiplier, bonus_flat
+  value         Float
+  expiresAtWeek Int?
+
+  createdAt DateTime @default(now())
+
+  player Player @relation(fields: [playerId], references: [id])
+  league League @relation(fields: [leagueId], references: [id])
+
+  @@index([leagueId, playerId])
+}
+
+model PlayerPerformance {
+  id       String @id @default(cuid())
+  playerId String
+  weekId   String
+  points   Float  @default(0)
+
+  passYds Int @default(0)
+  rushYds Int @default(0)
+  recYds  Int @default(0)
+  tds     Int @default(0)
+  fumbles Int @default(0)
+
+  player Player @relation(fields: [playerId], references: [id])
+  week   Week   @relation(fields: [weekId], references: [id])
+
+  @@unique([playerId, weekId])
+}
+
+model RosterSlot {
+  id        String  @id @default(cuid())
+  teamId    String
+  playerId  String?
+  slotType  String // QB/RB/WR/TE/FLEX/DST/K/BENCH
+  isStarter Boolean @default(false)
+
+  team   Team    @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@index([teamId, slotType])
+}
+
+model Powerup {
+  id          String  @id @default(cuid())
+  code        String  @unique // e.g., QB_PASS_YARDS_X15
+  name        String
+  description String
+  rarity      String  @default("common") // common, rare, epic, legendary
+  scope       String  @default("self") // self/opponent
+  duration    String  @default("week") // week/season
+  kind        String?
+  value       Float?
+
+  // New Fields for Shop
+  type          String  @default("card") // card (consumable artifact) | relic (persistent shop item)
+  price         Int     @default(0)
+  isPlayoffOnly Boolean @default(false)
+
+  teamPowerups      TeamPowerup[]
+  teamPowerupOffers TeamPowerupOffer[]
+}
+
+model TeamPowerup {
+  id         String   @id @default(cuid())
+  teamId     String
+  powerupId  String
+  weekId     String?
+  isConsumed Boolean  @default(false)
+  source     String   @default("pack_opening") // pack_opening | boss | shop | mission | gift
+  createdAt  DateTime @default(now())
+
+  team    Team    @relation(fields: [teamId], references: [id])
+  powerup Powerup @relation(fields: [powerupId], references: [id])
+  week    Week?   @relation(fields: [weekId], references: [id])
+
+  @@index([teamId, weekId])
+  @@index([teamId, isConsumed])
+}
+
+model TeamPowerupOffer {
+  id        String  @id @default(cuid())
+  teamId    String
+  powerupId String
+  weekId    String
+  isChosen  Boolean @default(false)
+
+  team    Team    @relation(fields: [teamId], references: [id])
+  powerup Powerup @relation(fields: [powerupId], references: [id])
+  week    Week    @relation(fields: [weekId], references: [id])
+
+  @@unique([teamId, weekId, powerupId])
+}
+
+model Draft {
+  id          String   @id @default(cuid())
+  leagueId    String   @unique
+  status      String   @default("open") // open | drafting | completed
+  format      String   @default("snake") // snake | linear
+  currentPick Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  league League      @relation(fields: [leagueId], references: [id])
+  picks  DraftPick[]
+}
+
+model DraftPick {
+  id         String  @id @default(cuid())
+  draftId    String
+  teamId     String
+  playerId   String?
+  pickNumber Int
+  round      Int
+
+  draft  Draft   @relation(fields: [draftId], references: [id])
+  team   Team    @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@unique([draftId, pickNumber])
+}
+
+model WaiverClaim {
+  id           String    @id @default(cuid())
+  teamId       String
+  playerId     String
+  dropPlayerId String?
+  priority     Int       @default(0)
+  bidAmount    Int       @default(0)
+  reason       String?
+  status       String    @default("pending") // pending | successful | failed
+  createdAt    DateTime  @default(now())
+  processedAt  DateTime?
+
+  team         Team    @relation(fields: [teamId], references: [id])
+  playerToAdd  Player  @relation("PlayerToAdd", fields: [playerId], references: [id])
+  playerToDrop Player? @relation("PlayerToDrop", fields: [dropPlayerId], references: [id])
+
+  @@index([teamId, status])
+}
+
+model LeagueTransaction {
+  id          String   @id @default(cuid())
+  leagueId    String
+  teamId      String
+  type        String // ADD | DROP | TRADE | WAIVER
+  playerId    String?
+  amount      Int? // FAAB or other value
+  description String
+  createdAt   DateTime @default(now())
+
+  league League  @relation(fields: [leagueId], references: [id])
+  team   Team    @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+}
+
+// Weekly Missions for roguelite progression
+model TeamMission {
+  id     String @id @default(cuid())
+  teamId String
+  weekId String
+
+  // Embedded mission definition
+  code        String // Unique mission type code
+  name        String // Display name
+  description String // Human-readable objective
+
+  // Mission parameters
+  type           String // "score" | "margin" | "stat" | "player_score"
+  targetPosition String? // For position-based missions (e.g., "RB", "WR")
+  targetValue    Float // Target to achieve
+
+  // Reward
+  rewardType  String // "gold" | "rerolls" | "artifact"
+  rewardValue Int // Amount of reward
+
+  // Progress tracking
+  progress    Float   @default(0)
+  isCompleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  week Week @relation(fields: [weekId], references: [id])
+
+  @@unique([teamId, weekId, code]) // Only one of each mission type per team per week
+}
+
+model TeamTitle {
+  id     String @id @default(cuid())
+  teamId String
+  title  String
+  year   Int
+
+  team Team @relation(fields: [teamId], references: [id])
+}

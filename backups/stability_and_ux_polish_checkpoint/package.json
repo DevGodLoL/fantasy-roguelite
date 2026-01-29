@@ -1,0 +1,46 @@
+{
+  "name": "fantasy-roguelite",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio --browser none",
+    "seed": "tsx prisma/seed.ts",
+    "mock-draft": "tsx scripts/run-mock-draft.ts",
+    "verify": "tsx scripts/verify-powerups.ts",
+    "db:check": "npm run prisma:generate && npx prisma migrate status && npm run seed && npm run verify"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.2.0",
+    "@prisma/client": "5.22.0",
+    "better-sqlite3": "^12.6.0",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "sonner": "2.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.2.3",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.2",
+    "prisma": "5.22.0",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
