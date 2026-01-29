@@ -77,11 +77,21 @@ async function main() {
         },
     ];
 
+    const rarityPrices = {
+        'legendary': 500,
+        'epic': 250,
+        'rare': 125,
+        'common': 50
+    };
+
     for (const p of powerups) {
+        const price = rarityPrices[p.rarity] || 50;
+        const powerupData = { ...p, price };
+
         await prisma.powerup.upsert({
             where: { code: p.code },
-            update: p,
-            create: p,
+            update: powerupData,
+            create: powerupData,
         });
         console.log(`  ✓ ${p.rarity.toUpperCase()} - ${p.name}`);
     }

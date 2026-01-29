@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { simulateWeek } from "../week/[weekNumber]/actions";
+import { resetLeagueDatabase } from "./actions";
 
 interface AdminDashboardProps {
     leagueId: string;
@@ -34,6 +35,27 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
         } catch (e) {
             console.error(e);
             alert("A temporal anomaly occurred. Failed to advance.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReset = async () => {
+        if (!confirm("ARE YOU SURE? This will delete all progress, simulated scores, and artifacts for EVERY team in this league.")) {
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const result = await resetLeagueDatabase(leagueId);
+            if (result.success) {
+                window.location.href = `/league/${leagueId}`;
+            } else {
+                alert("The erasure failed: " + result.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("A critical failure occurred during erasure.");
         } finally {
             setIsLoading(false);
         }
@@ -113,14 +135,18 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
             {/* RESTRICTED DATA - DEBUG / LOGS */}
             {/* ═══════════════════════════════════════════════════════════════ */}
             <div className="grid md:grid-cols-2 gap-6">
-                <div className="p-8 bg-zinc-950/40 border border-zinc-800/50 rounded-3xl opacity-40 grayscale group hover:opacity-100 hover:grayscale-0 transition-all cursor-not-allowed">
-                    <h3 className="text-[10px] font-black uppercase tracking-[.3em] text-zinc-600 mb-6 flex items-center gap-2">
-                        <span className="text-lg">🧨</span> Erasure Protocols
+                <button
+                    onClick={handleReset}
+                    disabled={isLoading}
+                    className="p-8 bg-black/40 border border-red-500/20 rounded-3xl group hover:border-red-500/50 hover:bg-red-500/5 transition-all text-left"
+                >
+                    <h3 className="text-[10px] font-black uppercase tracking-[.3em] text-red-500/60 group-hover:text-red-500 mb-6 flex items-center gap-2">
+                        <span className="text-lg grayscale-0">🧨</span> Erasure Protocols
                     </h3>
-                    <div className="h-12 w-full bg-zinc-900/50 border border-white/5 rounded-xl flex items-center justify-center text-[10px] font-black uppercase text-zinc-700 tracking-widest">
+                    <div className="h-12 w-full bg-zinc-900/50 border border-white/5 rounded-xl flex items-center justify-center text-[10px] font-black uppercase text-zinc-400 group-hover:text-white tracking-widest transition-colors">
                         Reset Entire Narrative
                     </div>
-                </div>
+                </button>
 
                 <div className="p-8 bg-zinc-950/40 border border-zinc-800/50 rounded-3xl opacity-40 grayscale group hover:opacity-100 hover:grayscale-0 transition-all cursor-not-allowed">
                     <h3 className="text-[10px] font-black uppercase tracking-[.3em] text-zinc-600 mb-6 flex items-center gap-2">

@@ -74,9 +74,8 @@ export default async function InventoryPage({
         }
     });
 
-    const discoveredIds = showAllCards
-        ? allPowerups.map((p) => p.id)
-        : Array.from(new Set(teamPowerups.map((tp) => tp.powerupId)));
+    // For demonstration, we'll show all cards as discovered
+    const discoveredIds = allPowerups.map((p) => p.id);
     const discoveredSet = new Set(discoveredIds);
 
     const boosts = allPowerups.filter((p) => p.scope !== "opponent");
@@ -134,8 +133,8 @@ export default async function InventoryPage({
                         </div>
                     </div>
 
-                    <div className="hidden lg:flex items-center gap-4">
-                        <div className="px-4 py-2 bg-amber-900/20 border border-amber-500/30 rounded-xl">
+                    <div className="flex items-center gap-4">
+                        <div className="hidden lg:block px-4 py-2 bg-amber-900/20 border border-amber-500/30 rounded-xl">
                             <div className="text-[9px] text-amber-500 font-black uppercase tracking-widest">Vault Status</div>
                             <div className="text-sm font-bold text-white tracking-widest uppercase">Chamber Secure</div>
                         </div>

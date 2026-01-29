@@ -473,13 +473,23 @@ async function main() {
     ];
 
     // Upsert all powerups
+    const rarityPrices = {
+        'legendary': 500,
+        'epic': 250,
+        'rare': 125,
+        'common': 50
+    };
+
     let counts = { legendary: 0, epic: 0, rare: 0, common: 0 };
 
     for (const p of powerups) {
+        const price = rarityPrices[p.rarity] || 50;
+        const powerupData = { ...p, price };
+
         await prisma.powerup.upsert({
             where: { code: p.code },
-            update: p,
-            create: p,
+            update: powerupData,
+            create: powerupData,
         });
         counts[p.rarity]++;
     }
