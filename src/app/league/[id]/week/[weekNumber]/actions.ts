@@ -14,6 +14,7 @@ import {
 import { simulateTeamPerformance } from "@/lib/game-logic/simulation";
 import { checkMutations } from "@/lib/game-logic/mutations";
 import { grantCommanderXP } from "@/lib/game-logic/progression";
+import { createAutoCheckpoint } from "@/lib/server/backup-utils";
 
 // --- HELPERS ---
 
@@ -177,6 +178,9 @@ export async function consumePowerup(formData: FormData) {
 export async function simulateWeek(leagueId: string, weekNumber: number) {
     try {
         console.log(`[SimulateWeek] League: ${leagueId}, Week: ${weekNumber}`);
+
+        // Safety backup before complex simulation
+        await createAutoCheckpoint(`simulate_floor_${weekNumber}`);
 
         const weekRef = await db.week.findUnique({
             where: { leagueId_number: { leagueId, number: weekNumber } },

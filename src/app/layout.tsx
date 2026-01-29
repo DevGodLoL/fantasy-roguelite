@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { PlayerModalProvider } from "@/context/PlayerModalContext";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -31,6 +32,7 @@ export default function RootLayout({
       >
         <PlayerModalProvider>
           {children}
+          <Toaster position="bottom-right" theme="dark" richColors />
         </PlayerModalProvider>
       </body>
     </html>

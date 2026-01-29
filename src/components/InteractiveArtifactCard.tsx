@@ -4,7 +4,7 @@ import { useState } from "react";
 import TiltCard from "./TiltCard";
 import ArtifactModal from "./ArtifactModal";
 
-interface Powerup {
+export interface Powerup {
     id: string;
     code: string;
     name: string;
@@ -119,12 +119,12 @@ export function InteractiveCard({
                     {/* Rarity hint glow */}
                     <div
                         className={`absolute inset-0 opacity-10 blur-xl ${powerup.rarity === "legendary"
-                                ? "bg-amber-500"
-                                : powerup.rarity === "epic"
-                                    ? "bg-purple-500"
-                                    : powerup.rarity === "rare"
-                                        ? "bg-blue-500"
-                                        : "bg-zinc-500"
+                            ? "bg-amber-500"
+                            : powerup.rarity === "epic"
+                                ? "bg-purple-500"
+                                : powerup.rarity === "rare"
+                                    ? "bg-blue-500"
+                                    : "bg-zinc-500"
                             }`}
                     />
                 </div>

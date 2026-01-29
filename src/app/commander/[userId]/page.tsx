@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Shield, Zap, Coins, Trophy, Lock, Unlock, ArrowRight, RefreshCcw, Star } from "lucide-react";
 import { TALENT_REGISTRY, getTalentByCode } from "@/lib/game-data/talents";
 import { unlockTalent, resetTalents } from "@/app/actions/commander";
+import { toast } from "sonner";
 
 import { use } from "react";
 
@@ -27,10 +28,11 @@ export default function CommanderPage({ params }: { params: Promise<{ userId: st
     const handleUnlock = async (code: string) => {
         try {
             await unlockTalent(userId, code);
+            toast.success("Talent unlocked. Your essence grows stronger.");
             await fetchProfile();
             setActiveTalent(getTalentByCode(code));
         } catch (e: any) {
-            alert(e.message);
+            toast.error(`The void resists: ${e.message}`);
         }
     };
 
@@ -125,7 +127,16 @@ export default function CommanderPage({ params }: { params: Promise<{ userId: st
                     )}
 
                     <button
-                        onClick={() => resetTalents(userId).then(fetchProfile)}
+                        onClick={() => {
+                            if (confirm("Reset all talents? You will regain your points, but your current build will be lost.")) {
+                                resetTalents(userId)
+                                    .then(() => {
+                                        toast.success("The timeline has been reset.");
+                                        fetchProfile();
+                                    })
+                                    .catch(() => toast.error("Failed to reset the timeline."));
+                            }
+                        }}
                         className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 hover:text-red-500/50 transition-colors flex items-center justify-center gap-2"
                     >
                         <RefreshCcw size={12} /> Reset Timeline

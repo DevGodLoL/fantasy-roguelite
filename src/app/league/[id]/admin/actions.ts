@@ -2,9 +2,13 @@
 
 import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createAutoCheckpoint } from "@/lib/server/backup-utils";
 
 export async function resetLeagueDatabase(leagueId: string) {
     try {
+        // Create safety checkpoint before erasure
+        await createAutoCheckpoint('reset_narrative');
+
         // Clear dependent data
         await db.teamPowerupOffer.deleteMany({ where: { week: { leagueId } } });
         await db.teamPowerup.deleteMany({ where: { team: { leagueId } } });

@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface RelicCardProps {
     relic: {
@@ -50,10 +51,15 @@ export default function RelicCard({ relic, userParams }: RelicCardProps) {
                 });
 
                 if (res.ok) {
+                    toast.success(`${relic.name} acquired. Its power flows through the vault.`);
                     router.refresh();
+                } else {
+                    const error = await res.text();
+                    toast.error(`The merchant refuses the trade: ${error || 'Unknown error'}`);
                 }
             } catch (e) {
                 console.error("Purchase failed", e);
+                toast.error("A break in the commerce weave. Purchase failed.");
             }
         });
     };

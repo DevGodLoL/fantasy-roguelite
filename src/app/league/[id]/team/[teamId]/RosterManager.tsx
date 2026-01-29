@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { swapRosterSlots, dropPlayer } from "../actions";
 import { usePlayerModal } from "@/context/PlayerModalContext";
+import { toast } from "sonner";
 
 interface Player {
     id: string;
@@ -78,9 +79,10 @@ export default function RosterManager({ leagueId, teamId, slots, readOnly = fals
             setIsPending(true);
             try {
                 await swapRosterSlots(leagueId, teamId, selectedSlotId, clickedSlotId);
+                toast.success("Roster formation updated.");
             } catch (e) {
                 console.error(e);
-                alert("Failed to swap players.");
+                toast.error("The formation failed to hold. Swap failed.");
             } finally {
                 setIsPending(false);
                 setSelectedSlotId(null);
@@ -194,7 +196,12 @@ export default function RosterManager({ leagueId, teamId, slots, readOnly = fals
                                     onClick={async (e) => {
                                         e.stopPropagation();
                                         if (confirm(`Release ${slot.player?.name} back to the mercenary camp?`)) {
-                                            await dropPlayer(leagueId, teamId, slot.id);
+                                            try {
+                                                await dropPlayer(leagueId, teamId, slot.id);
+                                                toast.success(`${slot.player?.name} has been released.`);
+                                            } catch (e) {
+                                                toast.error("Failed to release player.");
+                                            }
                                         }
                                     }}
                                     className="px-3 py-1.5 text-[10px] font-bold text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all uppercase tracking-tighter border border-transparent hover:border-red-500/30"

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { simulateWeek } from "../week/[weekNumber]/actions";
 import { resetLeagueDatabase } from "./actions";
+import { toast } from "sonner";
 
 interface AdminDashboardProps {
     leagueId: string;
@@ -27,14 +28,15 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
         try {
             const result = await simulateWeek(leagueId, currentWeekNumber);
             if (result.success) {
+                toast.success("Temporal shift complete. The weave has advanced.");
                 // Success feedback with thematic alert
                 window.location.href = `/league/${leagueId}?recap=true&week=${currentWeekNumber}`;
             } else {
-                alert(`The ritual failed: ${result.error}`);
+                toast.error(`The ritual failed: ${result.error}`);
             }
         } catch (e) {
             console.error(e);
-            alert("A temporal anomaly occurred. Failed to advance.");
+            toast.error("A temporal anomaly occurred. Failed to advance.");
         } finally {
             setIsLoading(false);
         }
@@ -49,13 +51,14 @@ export default function AdminDashboard({ leagueId, currentWeekNumber, totalWeeks
         try {
             const result = await resetLeagueDatabase(leagueId);
             if (result.success) {
+                toast.success("The narrative has been erased. A new era begins.");
                 window.location.href = `/league/${leagueId}`;
             } else {
-                alert("The erasure failed: " + result.error);
+                toast.error("The erasure failed: " + result.error);
             }
         } catch (e) {
             console.error(e);
-            alert("A critical failure occurred during erasure.");
+            toast.error("A critical failure occurred during erasure.");
         } finally {
             setIsLoading(false);
         }

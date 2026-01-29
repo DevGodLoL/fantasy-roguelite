@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { selectPowerup, rerollOffers } from "./actions";
+import { toast } from "sonner";
 
 interface PowerupOffer {
     id: string;
@@ -55,8 +56,10 @@ export default function PackOpening({
 
         try {
             await selectPowerup(formData);
-        } catch (error) {
+            toast.success("Artifact bound to your legion.");
+        } catch (error: any) {
             console.error(error);
+            toast.error(error.message || "Failed to bind artifact.");
             setIsPending(false);
         }
     };
@@ -74,11 +77,14 @@ export default function PackOpening({
         try {
             const result = await rerollOffers(leagueId, teamId, weekId, weekNumber);
             if (!result.success) {
-                console.error(result.error);
+                toast.error(`Reroll failed: ${result.error}`);
+            } else {
+                toast.success("The fates have been reshuffled.");
             }
             // Page will revalidate and show new offers
         } catch (error) {
             console.error(error);
+            toast.error("Temporal rift detected. Reroll failed.");
         }
         setIsRerolling(false);
     };
