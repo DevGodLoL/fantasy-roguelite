@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { simulateWeek } from "./actions";
 import LineupManager from "./LineupManager";
 import PackOpening from "./PackOpening";
+import VaultEquip from "./VaultEquip";
 import BattleRecap from "./BattleRecap";
 import MissionsPanel from "./MissionsPanel";
 import { selectMissionsForWeek } from "@/lib/game-data/missions";
@@ -100,12 +101,12 @@ export default async function WeekPage({
     // --- POWERUP LOGIC ---
     let activePowerup = null;
     let powerupOffers: any[] = [];
-    let allOffers: any[] = []; // All offers including chosen (for recap)
-    let userRerolls = 0; // Track rerolls for pack opening
+    let allOffers: any[] = [];
+    let vaultItems: any[] = [];
+    let packClaimed = false;
 
     // Helper to generate offers if needed
     const generateOffersIfNeeded = async (teamId: string, weekId: string) => {
-        // Check if offers exist
         const existing = await db.teamPowerupOffer.findMany({
             where: { teamId, weekId },
             include: { powerup: true }
@@ -113,10 +114,8 @@ export default async function WeekPage({
 
         if (existing.length > 0) return existing;
 
-        // No offers exist - generate new ones
         const allPowerups = await db.powerup.findMany({ where: { type: 'card' } });
 
-        // Select 4 powerups with rarity weighting
         const selectRarity = () => {
             const r = Math.random();
             if (r < 0.7) return "common";
@@ -134,7 +133,6 @@ export default async function WeekPage({
             if (candidates.length > 0) {
                 selected.push(candidates[Math.floor(Math.random() * candidates.length)]);
             } else {
-                // Fallback to any unselected
                 const any = allPowerups.filter(p => !selected.find(s => s.id === p.id));
                 if (any.length > 0) {
                     selected.push(any[Math.floor(Math.random() * any.length)]);
@@ -142,7 +140,6 @@ export default async function WeekPage({
             }
         }
 
-        // Create offers
         if (selected.length > 0) {
             await db.teamPowerupOffer.createMany({
                 data: selected.map(p => ({
@@ -161,38 +158,40 @@ export default async function WeekPage({
     };
 
     if (userTeam) {
-        // Fetch team's reroll count
-        const teamData = await db.team.findUnique({
-            where: { id: userTeam.id },
-            select: { rerolls: true }
-        });
-        userRerolls = teamData?.rerolls ?? 0;
-
-        // Check for active powerup
+        // Check for artifact equipped for this week
         const tp = await db.teamPowerup.findFirst({
             where: { teamId: userTeam.id, weekId: week.id },
             include: { powerup: true }
         });
         if (tp) activePowerup = tp;
 
-        // Check matchup status to determine if we need offers
         const matchupStatus = userMatchup?.status;
         const isFinalCheck = matchupStatus === 'final';
 
+        // Fetch all offers for this week
+        allOffers = await db.teamPowerupOffer.findMany({
+            where: { teamId: userTeam.id, weekId: week.id },
+            include: { powerup: true }
+        });
+
+        // Determine if pack was already claimed (all offers marked as chosen)
+        packClaimed = allOffers.length > 0 && allOffers.every(o => o.isChosen);
+
         // Auto-generate offers on page load if none exist and week is not final
-        if (!tp && !isFinalCheck) {
+        if (!isFinalCheck && allOffers.length === 0) {
             allOffers = await generateOffersIfNeeded(userTeam.id, week.id);
-        } else {
-            // Fetch existing offers for recap
-            allOffers = await db.teamPowerupOffer.findMany({
-                where: { teamId: userTeam.id, weekId: week.id },
-                include: { powerup: true }
-            });
         }
 
-        // Filter to unchosen offers for pack opening display
-        if (!tp) {
-            powerupOffers = allOffers.filter(o => !o.isChosen);
+        // Unchosen offers = pack not yet claimed
+        powerupOffers = allOffers.filter(o => !o.isChosen);
+
+        // Fetch vault items (unequipped, unconsumed artifacts owned by this team)
+        if (!activePowerup && !isFinalCheck) {
+            vaultItems = await db.teamPowerup.findMany({
+                where: { teamId: userTeam.id, weekId: null, isConsumed: false },
+                include: { powerup: true },
+                orderBy: { createdAt: 'desc' }
+            });
         }
     }
 
@@ -413,15 +412,24 @@ export default async function WeekPage({
                                 </div>
                             )}
 
-                            {/* 2. Show Pack Opening if offers exist (Only if NOT final) */}
-                            {!isFinal && !activePowerup && powerupOffers.length > 0 && (
+                            {/* 2. Show Pack Opening if offers exist and not yet claimed */}
+                            {!isFinal && !activePowerup && !packClaimed && powerupOffers.length > 0 && (
                                 <PackOpening
                                     leagueId={leagueId}
                                     teamId={userTeam.id}
                                     weekId={week.id}
                                     weekNumber={weekNum}
                                     offers={powerupOffers}
-                                    rerolls={userRerolls}
+                                />
+                            )}
+
+                            {/* 3. Show Vault Equip if pack claimed but no artifact equipped */}
+                            {!isFinal && !activePowerup && (packClaimed || powerupOffers.length === 0) && (
+                                <VaultEquip
+                                    leagueId={leagueId}
+                                    weekId={week.id}
+                                    weekNumber={weekNum}
+                                    vaultItems={vaultItems}
                                 />
                             )}
                         </>

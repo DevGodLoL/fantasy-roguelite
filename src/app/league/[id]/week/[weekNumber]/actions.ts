@@ -84,34 +84,71 @@ export async function ensurePackOffers(leagueId: string, teamId: string, weekId:
     });
 }
 
-export async function selectPowerup(formData: FormData) {
-    const teamId = formData.get("teamId") as string;
-    const powerupId = formData.get("powerupId") as string;
-    const weekId = formData.get("weekId") as string;
-    const leagueId = formData.get("leagueId") as string;
-    const weekNumber = formData.get("weekNumber") as string;
-
-    const offer = await db.teamPowerupOffer.findFirst({
-        where: { teamId, weekId, powerupId },
-    });
-
-    if (!offer) throw new Error("Invalid powerup selection");
-
-    const existing = await db.teamPowerup.findFirst({
+export async function claimPack(leagueId: string, teamId: string, weekId: string, weekNumber: number) {
+    // Get all offers for this team/week
+    const offers = await db.teamPowerupOffer.findMany({
         where: { teamId, weekId },
+        include: { powerup: true },
     });
 
-    if (existing) throw new Error("Already selected a powerup for this week");
+    if (offers.length === 0) throw new Error("No offers to claim");
 
-    await db.$transaction([
-        db.teamPowerup.create({
-            data: { teamId, powerupId, weekId, isConsumed: false },
-        }),
-        db.teamPowerupOffer.update({
-            where: { id: offer.id },
-            data: { isChosen: true },
-        }),
-    ]);
+    // Check if already claimed (any TeamPowerup with source pack_opening for this week's offers)
+    const alreadyClaimed = await db.teamPowerup.findFirst({
+        where: {
+            teamId,
+            powerupId: { in: offers.map(o => o.powerupId) },
+            source: "pack_opening",
+        },
+    });
+    if (alreadyClaimed) throw new Error("Pack already claimed");
+
+    // Add ALL offers to the vault (weekId: null = unequipped)
+    const transactions: any[] = [
+        ...offers.map(o =>
+            db.teamPowerup.create({
+                data: {
+                    teamId,
+                    powerupId: o.powerupId,
+                    weekId: null,      // Not bound to any week yet
+                    isConsumed: false,
+                    source: "pack_opening",
+                },
+            })
+        ),
+        // Mark all offers as chosen
+        ...offers.map(o =>
+            db.teamPowerupOffer.update({
+                where: { id: o.id },
+                data: { isChosen: true },
+            })
+        ),
+    ];
+
+    await db.$transaction(transactions);
+    revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
+}
+
+export async function equipArtifact(leagueId: string, teamPowerupId: string, weekId: string, weekNumber: number) {
+    const tp = await db.teamPowerup.findUnique({
+        where: { id: teamPowerupId },
+        include: { powerup: true },
+    });
+
+    if (!tp) throw new Error("Artifact not found");
+    if (tp.isConsumed) throw new Error("Artifact already consumed");
+    if (tp.weekId) throw new Error("Artifact already equipped to a week");
+
+    // Check no artifact already equipped for this week
+    const existing = await db.teamPowerup.findFirst({
+        where: { teamId: tp.teamId, weekId },
+    });
+    if (existing) throw new Error("Already have an artifact equipped for this week");
+
+    await db.teamPowerup.update({
+        where: { id: teamPowerupId },
+        data: { weekId },
+    });
 
     revalidatePath(`/league/${leagueId}/week/${weekNumber}`);
 }
@@ -241,6 +278,27 @@ export async function simulateWeek(leagueId: string, weekNumber: number, bypassR
             where: { leagueId_number: { leagueId, number: weekNumber } },
         });
         if (!weekRef) throw new Error("Week not found");
+
+        // Auto-assign artifacts for AI teams that don't have one equipped
+        const allTeams = await db.team.findMany({ where: { leagueId } });
+        for (const team of allTeams) {
+            const equipped = await db.teamPowerup.findFirst({
+                where: { teamId: team.id, weekId: weekRef.id },
+            });
+            if (!equipped) {
+                // Find an unequipped, unconsumed artifact in this team's vault
+                const vaultItem = await db.teamPowerup.findFirst({
+                    where: { teamId: team.id, weekId: null, isConsumed: false },
+                });
+                if (vaultItem) {
+                    await db.teamPowerup.update({
+                        where: { id: vaultItem.id },
+                        data: { weekId: weekRef.id },
+                    });
+                    console.log(`[SimulateWeek] Auto-equipped artifact ${vaultItem.id} for team ${team.name}`);
+                }
+            }
+        }
 
         const week = await db.week.findUnique({
             where: { id: weekRef.id },

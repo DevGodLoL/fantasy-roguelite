@@ -245,9 +245,13 @@ export default async function LeaguePage({
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* COMMAND CENTER (Quick Actions) */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <nav className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <nav className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Link href={`/league/${id}/inventory`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
+            <Shield className="w-6 h-6 text-amber-500 mb-2 group-hover:scale-110 transition-transform" />
+            <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-amber-500">The Vault</div>
+          </Link>
           <Link href={`/league/${id}/team/${userTeam.id}`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
-            <Shield className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" />
+            <Trophy className="w-6 h-6 text-white mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-white">My Army</div>
           </Link>
           <Link href={`/league/${id}/shop`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
@@ -262,16 +266,12 @@ export default async function LeaguePage({
             <MapIcon className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-blue-400">Campaign</div>
           </Link>
-          <Link href={`/league/${id}/schedule`} className="p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl group transition-all">
-            <Calendar className="w-6 h-6 text-zinc-500 mb-2 group-hover:scale-110 transition-transform" />
-            <div className="text-xs font-black uppercase text-zinc-400 group-hover:text-white">Schedule</div>
-          </Link>
           <div className="p-1 flex items-center justify-center gap-2">
+            <Link href={`/league/${id}/inventory`} className="p-3 bg-zinc-900/30 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-amber-500 transition-colors" title="Vault">
+              <Shield size={18} />
+            </Link>
             <Link href={`/league/${id}/transactions`} className="p-3 bg-zinc-900/30 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-colors" title="Logs">
               <FileText size={18} />
-            </Link>
-            <Link href={`/league/${id}/playoffs`} className="p-3 bg-zinc-900/30 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-colors" title="Playoffs">
-              <Trophy size={18} />
             </Link>
             <Link href={`/league/${id}/admin`} className="p-3 bg-zinc-900/30 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-red-400 transition-colors" title="Settings">
               <Settings size={18} />
